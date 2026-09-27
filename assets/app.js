@@ -4,21 +4,25 @@ const $ = id => document.getElementById(id);
 const VIEWS = ['harian', 'galeri', 'rekap'];
 let CONFIG = null;
 let ENTRIES = [];
+let HARIAN = {};   // data/harian.json: status kehadiran + laporan harian per tanggal
 let view = 'harian';
 let lbPhotos = [];
 let lbIndex = 0;
 
 async function init() {
   try {
-    [CONFIG, ENTRIES] = await Promise.all([
+    [CONFIG, ENTRIES, HARIAN] = await Promise.all([
       fetchJSON('data/config.json'),
-      fetchJSON('data/kegiatan.json')
+      fetchJSON('data/kegiatan.json'),
+      fetchJSON('data/harian.json').catch(() => ({}))
     ]);
   } catch (e) {
     $('view-harian').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
     return;
   }
   ENTRIES = (Array.isArray(ENTRIES) ? ENTRIES : []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
+  if (!HARIAN || typeof HARIAN !== 'object' || Array.isArray(HARIAN)) HARIAN = {};
+  for (const d of Object.keys(HARIAN)) if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !HARIAN[d]) delete HARIAN[d];
   renderProfile();
   renderSidebar();
   renderBanner();
@@ -127,7 +131,10 @@ function renderSidebar() {
     ['history', minggu, 'Minggu']
   ].map(([ic, v, l]) => `<div class="mini-stat">${icon(ic)}<strong>${v}</strong><span>${l}</span></div>`).join('');
   const latest = ENTRIES.reduce((m, e) => (e.tanggal > m ? e.tanggal : m), '');
-  $('updated').textContent = latest ? `Kegiatan terakhir: ${formatTanggal(latest)}` : 'Belum ada kegiatan.';
+  const sakit = Object.keys(HARIAN).filter(d => statusOf(d) === 'Sakit').length;
+  const izin = Object.keys(HARIAN).filter(d => statusOf(d) === 'Izin').length;
+  $('updated').textContent = (latest ? `Kegiatan terakhir: ${formatTanggal(latest)}` : 'Belum ada kegiatan.') +
+    (sakit || izin ? ` · Sakit ${sakit} hari · Izin ${izin} hari` : '');
 }
 
 function inisialInstansi(nama) {
@@ -177,7 +184,7 @@ function renderFooter() {
 
 // ---------- Filter & tampilan ----------
 function fillWeekFilter() {
-  const weeks = [...new Set(ENTRIES.map(e => mingguKe(CONFIG, e.tanggal)))].sort((a, b) => b - a);
+  const weeks = [...new Set(allDates().map(d => mingguKe(CONFIG, d)))].sort((a, b) => b - a);
   $('filterMinggu').innerHTML = '<option value="">Semua minggu</option>' + weeks.map(w => {
     const { start, end } = rentangMinggu(CONFIG, w);
     return `<option value="${w}">Minggu ke-${w} (${formatPendek(start)} – ${formatPendek(end)})</option>`;
@@ -191,7 +198,7 @@ function fillWeekFilter() {
 function fillDateFilter() {
   const w = $('filterMinggu').value;
   const current = $('filterTanggal').value;
-  const dates = [...new Set(ENTRIES.filter(e => !w || mingguKe(CONFIG, e.tanggal) === Number(w)).map(e => e.tanggal))].sort().reverse();
+  const dates = allDates().filter(d => !w || mingguKe(CONFIG, d) === Number(w)).sort().reverse();
   $('filterTanggal').innerHTML = '<option value="">Semua tanggal</option>' + dates.map(d => {
     const dt = parseDate(d);
     return `<option value="${d}">${HARI[dt.getDay()]}, ${formatPendek(dt)}</option>`;
@@ -258,6 +265,29 @@ function printReport() {
   setTimeout(() => window.print(), 50);
 }
 
+function statusOf(date) {
+  const st = HARIAN[date] && HARIAN[date].status;
+  return ['Sakit', 'Izin'].includes(st) ? st : 'Hadir';
+}
+
+function hasReport(date) {
+  const r = HARIAN[date];
+  return Boolean(r && (r.ringkasan || r.pembelajaran || r.kendala));
+}
+
+// Tanggal tidak hadir (Sakit/Izin) yang lolos filter; muncul walau tanpa kegiatan.
+function absentDates() {
+  const w = $('filterMinggu').value;
+  const t = $('filterTanggal').value;
+  if ($('filterCari').value.trim()) return [];
+  return Object.keys(HARIAN).filter(d => statusOf(d) !== 'Hadir' &&
+    (!w || mingguKe(CONFIG, d) === Number(w)) && (!t || d === t));
+}
+
+function allDates() {
+  return [...new Set([...ENTRIES.map(e => e.tanggal), ...Object.keys(HARIAN).filter(d => statusOf(d) !== 'Hadir')])];
+}
+
 function filtered() {
   const w = $('filterMinggu').value;
   const t = $('filterTanggal').value;
@@ -289,14 +319,18 @@ function noMatch() {
   return emptyState(ENTRIES.length ? 'Tidak ada kegiatan yang cocok dengan filter.' : 'Belum ada kegiatan yang didokumentasikan.');
 }
 
-function groupByWeek(list) {
-  const weeks = new Map();
+function groupByWeek(list, extraDates = []) {
+  const byDate = new Map();
+  for (const d of extraDates) byDate.set(d, []);
   for (const e of list) {
-    const w = mingguKe(CONFIG, e.tanggal);
+    if (!byDate.has(e.tanggal)) byDate.set(e.tanggal, []);
+    byDate.get(e.tanggal).push(e);
+  }
+  const weeks = new Map();
+  for (const d of [...byDate.keys()].sort().reverse()) {
+    const w = mingguKe(CONFIG, d);
     if (!weeks.has(w)) weeks.set(w, new Map());
-    const days = weeks.get(w);
-    if (!days.has(e.tanggal)) days.set(e.tanggal, []);
-    days.get(e.tanggal).push(e);
+    weeks.get(w).set(d, byDate.get(d));
   }
   return weeks;
 }
@@ -312,9 +346,10 @@ function addPhoto(src, e) {
 
 // ---------- Kegiatan harian ----------
 function renderHarian(list) {
-  if (!list.length) { $('view-harian').innerHTML = noMatch(); return; }
+  const absent = absentDates();
+  if (!list.length && !absent.length) { $('view-harian').innerHTML = noMatch(); return; }
   let html = '';
-  for (const [w, days] of groupByWeek(list)) {
+  for (const [w, days] of groupByWeek(list, absent)) {
     html += `<div class="week-label"><span>Minggu ke-${w}</span><small>${weekLabel(w)}</small></div>`;
     for (const [tgl, items] of days) {
       html += `<article class="card day">
@@ -324,9 +359,14 @@ function renderHarian(list) {
             <h3>${formatTanggal(tgl)}</h3>
             <span>Hari ke-${hariKe(CONFIG, tgl)} · Minggu ke-${w}</span>
           </div>
-          <span class="pill pill-green">${items.length} kegiatan</span>
+          <div class="day-actions">
+            ${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span>`
+              : `<span class="pill pill-green">${items.length} kegiatan</span>`}
+            ${hasReport(tgl) ? `<button class="btn btn-light btn-sm" type="button" data-report="${tgl}">${icon('file')} Laporan harian</button>` : ''}
+          </div>
         </header>
-        <ol class="steps">${items.map(renderStep).join('')}</ol>
+        ${items.length ? `<ol class="steps">${items.map(renderStep).join('')}</ol>`
+          : `<p class="absent">Tidak masuk (${statusOf(tgl).toLowerCase()})${HARIAN[tgl].keterangan ? `: ${esc(HARIAN[tgl].keterangan)}` : ''}.</p>`}
       </article>`;
     }
   }
@@ -370,9 +410,10 @@ function renderGaleri(list) {
 
 // ---------- Rekap mingguan ----------
 function renderRekap(list) {
-  if (!list.length) { $('view-rekap').innerHTML = noMatch(); return; }
+  const absent = absentDates();
+  if (!list.length && !absent.length) { $('view-rekap').innerHTML = noMatch(); return; }
   let html = '';
-  for (const [w, days] of groupByWeek(list)) {
+  for (const [w, days] of groupByWeek(list, absent)) {
     const all = [...days.values()].flat();
     const foto = all.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
     html += `<article class="card week-card">
@@ -388,7 +429,7 @@ function renderRekap(list) {
         </div>
         <ul class="recap-list">${[...days].map(([tgl, items]) => `<li>
           <strong>${esc(formatTanggal(tgl))}</strong>
-          <span>${items.map(e => esc(e.judul)).join(' · ')}</span>
+          <span>${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span> ` : ''}${items.map(e => esc(e.judul)).join(' · ')}</span>
         </li>`).join('')}</ul>
         <div class="actions">
           <button class="btn btn-primary btn-sm" type="button" data-week="${w}">${icon('eye')} Lihat detail</button>
@@ -399,6 +440,35 @@ function renderRekap(list) {
   }
   $('view-rekap').innerHTML = html;
 }
+
+// ---------- Laporan harian (modal) ----------
+function openReport(date) {
+  const r = HARIAN[date] || {};
+  const parts = [['Ringkasan kegiatan', r.ringkasan], ['Pembelajaran yang didapat', r.pembelajaran], ['Kendala yang dihadapi', r.kendala]];
+  $('reportTitle').textContent = `Laporan harian · ${formatTanggal(date)}`;
+  $('reportSub').textContent = `Status: ${statusOf(date)}${r.keterangan ? ` (${r.keterangan})` : ''}`;
+  $('reportBody').innerHTML = parts.map(([title, text], i) => `<section>
+    <div class="report-head"><h4>${title}</h4><button class="btn btn-link btn-sm" type="button" data-copy-report="${i}">Salin</button></div>
+    <p id="reportPart${i}">${esc(text || '-')}</p>
+  </section>`).join('');
+  $('reportModal').hidden = false;
+}
+function closeReport() { $('reportModal').hidden = true; }
+
+document.addEventListener('click', async ev => {
+  const open = ev.target.closest('[data-report]');
+  if (open) return openReport(open.dataset.report);
+  const copy = ev.target.closest('[data-copy-report]');
+  if (copy) {
+    try {
+      await navigator.clipboard.writeText($(`reportPart${copy.dataset.copyReport}`).textContent);
+      copy.textContent = 'Tersalin ✓';
+      setTimeout(() => { copy.textContent = 'Salin'; }, 1500);
+    } catch { /* clipboard tidak tersedia */ }
+  }
+  if (ev.target.id === 'reportModal' || ev.target.closest('#reportClose')) closeReport();
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('reportModal').hidden) closeReport(); });
 
 // ---------- Lightbox ----------
 function openLb(i) {

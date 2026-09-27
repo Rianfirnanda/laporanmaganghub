@@ -288,6 +288,7 @@ $('formUnlock').addEventListener('submit', async ev => {
       throw e;
     }
     failCount = 0;
+    AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
     $('uPass').value = '';
     await enterApp();
   });
@@ -305,11 +306,16 @@ async function enterApp() {
   renderDrive();
   if (driveReady()) loadGis().catch(() => {});
   resetForm();
-  await Promise.all([loadEntries(), loadConfig()]);
+  renderAi();
+  if (!$('hTanggal').value) $('hTanggal').value = todayStr();
+  await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
+  renderHarianForm();
 }
 
 function lock(reason) {
   TOKEN = '';
+  AI_KEY = '';
+  harian = {};
   driveToken = null;
   entries = [];
   CFG = null;
@@ -543,6 +549,7 @@ async function deleteEntry(id) {
 }
 
 function renderList() {
+  renderHarianEntries();
   const q = $('listCari').value.trim().toLowerCase();
   const list = sortEntries(entries).filter(e => !q || `${e.judul} ${e.keterangan} ${e.tanggal}`.toLowerCase().includes(q));
   const hari = new Set(entries.map(e => e.tanggal)).size;
@@ -800,7 +807,9 @@ $('formPass').addEventListener('submit', async ev => {
   if ($('pNew').value !== $('pNew2').value) return toast('Ulangan kata sandi baru tidak sama.', true);
   await withBusy(ev.submitter, async () => {
     const token = await decryptToken(stored.enc, $('pOld').value);
-    writeStore({ ...stored, enc: await encryptToken(token, $('pNew').value) });
+    const next = { ...stored, enc: await encryptToken(token, $('pNew').value) };
+    if (stored.aiEnc) next.aiEnc = await encryptToken(await decryptToken(stored.aiEnc, $('pOld').value), $('pNew').value);
+    writeStore(next);
     $('formPass').reset();
     toast('Kata sandi panel diganti.');
   });
@@ -867,6 +876,261 @@ function setDeployStatus(state) {
   if (state !== 'pending') { clearInterval(deployTick); deployTick = null; }
   if (state === 'done') deployHideTimer = setTimeout(() => { el.hidden = true; }, 15000);
 }
+
+// ================= Laporan harian (isian daftar hadir monev) =================
+// Setiap sore monev MagangHub meminta tiga isian: ringkasan kegiatan,
+// pembelajaran, dan kendala. Claude menyusunnya dari catatan kegiatan hari
+// itu; hasilnya bisa diedit, disalin, dan disimpan ke data/harian.json.
+const HARIAN_PATH = 'data/harian.json';
+const STATUS_HADIR = ['Hadir', 'Sakit', 'Izin'];
+const AI_MODEL = 'claude-opus-5';
+let harian = {};
+let AI_KEY = '';   // hanya di memori; tersimpan terenkripsi sebagai stored.aiEnc
+
+const AI_SYSTEM = `Kamu membantu seorang peserta magang menulis laporan harian untuk daftar hadir di monev MagangHub Kemnaker. Laporan diisi setiap sore dan terdiri dari tiga bagian: ringkasan kegiatan, pembelajaran yang didapat, dan kendala yang dihadapi.
+
+Tulis seolah-olah peserta sendiri yang menulis: bahasa Indonesia sehari-hari yang sopan, sudut pandang orang pertama ("saya"), kalimat yang mengalir, tanpa poin-poin, tanpa judul, tanpa emoji, dan tanpa kalimat pembuka seperti "Berikut" atau "Pada hari ini saya telah melaksanakan". Variasikan susunan kalimat dan hindari frasa klise seperti "sangat bermanfaat", "menambah wawasan", atau "secara keseluruhan".
+
+- ringkasan: 2-4 kalimat tentang apa saja yang dikerjakan dari pagi sampai sore, mengikuti urutan catatan. Sebut hal konkret (nama pekerjaan, jumlah, aplikasi, tempat) bila ada di catatan.
+- pembelajaran: 1-3 kalimat tentang hal yang dipelajari atau keterampilan yang terasah dari kegiatan itu, masuk akal berdasarkan catatan, bukan pujian umum.
+- kendala: 1-2 kalimat tentang kendala yang tersirat di catatan beserta cara mengatasinya bila disebut. Jika catatan tidak menyebut kendala, tulis singkat dan jujur bahwa tidak ada kendala berarti; jangan mengarang masalah.
+
+Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan, lalu isi pembelajaran dan kendala dengan "-" bila tidak relevan.`;
+
+const HARIAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    ringkasan: { type: 'string' },
+    pembelajaran: { type: 'string' },
+    kendala: { type: 'string' }
+  },
+  required: ['ringkasan', 'pembelajaran', 'kendala'],
+  additionalProperties: false
+};
+
+async function loadHarian() {
+  try {
+    const data = await readRepoJSON(HARIAN_PATH, S.branch, {});
+    harian = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  } catch (e) {
+    harian = {};
+    toast(`Gagal memuat laporan harian: ${e.message}`, true);
+  }
+  renderHarianList();
+}
+
+function dayEntries(date) {
+  return entries.filter(e => e.tanggal === date).sort((a, b) => (a.jam || '').localeCompare(b.jam || ''));
+}
+
+function renderHarianForm() {
+  const date = $('hTanggal').value;
+  const rec = harian[date] || {};
+  $('hStatus').value = STATUS_HADIR.includes(rec.status) ? rec.status : 'Hadir';
+  $('hKet').value = rec.keterangan || '';
+  $('hRingkasan').value = rec.ringkasan || '';
+  $('hPembelajaran').value = rec.pembelajaran || '';
+  $('hKendala').value = rec.kendala || '';
+  toggleKet();
+  renderHarianEntries();
+  document.querySelectorAll('#harianList [data-date]').forEach(b => b.classList.toggle('editing', b.dataset.date === date));
+}
+
+// Hanya daftar kegiatan; isian laporan yang belum disimpan tidak disentuh.
+function renderHarianEntries() {
+  const items = dayEntries($('hTanggal').value);
+  $('hEntries').innerHTML = items.length
+    ? items.map(e => `<li><b>${esc(e.jam || '')}</b> ${esc(e.judul)}</li>`).join('')
+    : '<li class="muted">Belum ada kegiatan tercatat pada tanggal ini.</li>';
+}
+
+function toggleKet() {
+  $('hKetWrap').hidden = $('hStatus').value === 'Hadir';
+}
+
+function renderHarianList() {
+  const dates = Object.keys(harian).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  $('harianCount').textContent = `${dates.length} hari tersimpan`;
+  $('harianList').innerHTML = dates.length ? dates.map(d => {
+    const r = harian[d];
+    const st = STATUS_HADIR.includes(r.status) ? r.status : 'Hadir';
+    return `<button type="button" class="list-item list-btn${d === $('hTanggal').value ? ' editing' : ''}" data-date="${d}">
+      <div class="list-info"><strong>${esc(formatTanggal(d))}</strong>
+      <span>${esc((r.ringkasan || r.keterangan || '').slice(0, 70))}${(r.ringkasan || '').length > 70 ? '…' : ''}</span></div>
+      ${st !== 'Hadir' ? `<span class="pill pill-${st.toLowerCase()}">${st}</span>` : ''}
+    </button>`;
+  }).join('') : '<p class="empty">Belum ada laporan harian.</p>';
+}
+
+$('hTanggal').addEventListener('change', renderHarianForm);
+$('hStatus').addEventListener('change', toggleKet);
+$('harianList').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-date]');
+  if (!b) return;
+  $('hTanggal').value = b.dataset.date;
+  renderHarianForm();
+  $('formHarian').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-copy]');
+  if (!b || !$(b.dataset.copy)) return;
+  try {
+    await navigator.clipboard.writeText($(b.dataset.copy).value);
+    const old = b.textContent;
+    b.textContent = 'Tersalin ✓';
+    setTimeout(() => { b.textContent = old; }, 1500);
+  } catch {
+    $(b.dataset.copy).select();
+    toast('Tekan Ctrl+C untuk menyalin.', true);
+  }
+});
+
+function harianPrompt(date) {
+  const c = CFG || {};
+  const items = dayEntries(date);
+  const status = $('hStatus').value;
+  const ket = $('hKet').value.trim();
+  const lines = items.map(e => {
+    const parts = [`- ${e.jam || '??:??'} (${e.sesi || sesiDariJam(e.jam)}): ${e.judul}`];
+    if (e.lokasi) parts.push(`Lokasi: ${e.lokasi}.`);
+    if (e.keterangan) parts.push(`Catatan: ${e.keterangan.replace(/\s+/g, ' ')}`);
+    return parts.join(' ');
+  });
+  const prev = Object.keys(harian).filter(d => d < date && harian[d].ringkasan).sort().pop();
+  return [
+    `Peserta: ${c.posisi || 'peserta magang'} di ${c.instansi || 'instansi'}.`,
+    `Tanggal: ${formatTanggal(date)}. Status kehadiran: ${status}${ket ? ` (${ket})` : ''}.`,
+    '',
+    lines.length ? `Catatan kegiatan hari ini, urut jam:\n${lines.join('\n')}` : 'Tidak ada catatan kegiatan pada hari ini.',
+    prev ? `\nRingkasan laporan hari sebelumnya, untuk dihindari susunan kalimatnya agar tidak berulang:\n${harian[prev].ringkasan}` : '',
+    '',
+    'Tulis ketiga isian laporan daftar hadir untuk hari ini.'
+  ].join('\n');
+}
+
+// Panggilan langsung ke Messages API dari browser (situs statis tanpa build step;
+// SDK tidak bisa dimuat karena CSP hanya mengizinkan skrip dari situs ini).
+async function generateHarian(date) {
+  if (!AI_KEY) throw new Error('Kunci API Claude belum diatur. Isi di kartu "Asisten AI".');
+  if (!dayEntries(date).length && $('hStatus').value === 'Hadir') {
+    throw new Error('Belum ada kegiatan pada tanggal ini. Tambahkan kegiatan dulu atau ubah status kehadiran.');
+  }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': AI_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'server-side-fallback-2026-07-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      max_tokens: 16000,
+      fallbacks: 'default',
+      system: AI_SYSTEM,
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: HARIAN_SCHEMA } },
+      messages: [{ role: 'user', content: harianPrompt(date) }]
+    })
+  });
+  if (!res.ok) {
+    let m = res.statusText;
+    try { m = (await res.json()).error.message || m; } catch { /* abaikan */ }
+    if (res.status === 401) m = 'Kunci API Claude tidak valid atau sudah dicabut.';
+    if (res.status === 429) m = 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
+    if (/credit balance/i.test(m)) m = 'Saldo API Claude habis. Isi saldo di console.anthropic.com → Billing.';
+    throw new Error(`Claude ${res.status}: ${m}`);
+  }
+  const msg = await res.json();
+  if (msg.stop_reason === 'refusal') throw new Error('AI menolak menulis laporan ini. Coba ubah catatan kegiatan.');
+  if (msg.stop_reason === 'max_tokens') throw new Error('Jawaban AI terpotong. Coba lagi.');
+  const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  const out = JSON.parse(text);
+  return {
+    ringkasan: String(out.ringkasan || '').trim(),
+    pembelajaran: String(out.pembelajaran || '').trim(),
+    kendala: String(out.kendala || '').trim()
+  };
+}
+
+$('btnAi').addEventListener('click', async ev => {
+  const date = $('hTanggal').value;
+  const hasText = ['hRingkasan', 'hPembelajaran', 'hKendala'].some(id => $(id).value.trim());
+  if (hasText && !confirm('Isian yang ada akan diganti dengan tulisan baru dari AI. Lanjutkan?')) return;
+  await withBusy(ev.currentTarget, async () => {
+    msg('aiMsg', 'Claude sedang menulis laporan…');
+    const out = await generateHarian(date);
+    $('hRingkasan').value = out.ringkasan;
+    $('hPembelajaran').value = out.pembelajaran;
+    $('hKendala').value = out.kendala;
+    toast('Laporan selesai ditulis. Periksa dulu, lalu klik Simpan laporan.');
+  }, 'aiMsg');
+});
+
+$('formHarian').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const date = $('hTanggal').value;
+  const rec = {
+    status: $('hStatus').value,
+    keterangan: $('hStatus').value === 'Hadir' ? '' : $('hKet').value.trim(),
+    ringkasan: $('hRingkasan').value.trim(),
+    pembelajaran: $('hPembelajaran').value.trim(),
+    kendala: $('hKendala').value.trim(),
+    diperbarui: new Date().toISOString()
+  };
+  if (!rec.keterangan) delete rec.keterangan;
+  const empty = rec.status === 'Hadir' && !rec.ringkasan && !rec.pembelajaran && !rec.kendala;
+  await withBusy($('btnSaveHarian'), async () => {
+    msg('harianMsg', 'Menyimpan ke GitHub…');
+    let latest;
+    await commit(`Laporan harian ${date}${rec.status !== 'Hadir' ? ` (${rec.status})` : ''}`, async base => {
+      latest = await readRepoJSON(HARIAN_PATH, base, {});
+      if (!latest || typeof latest !== 'object' || Array.isArray(latest)) latest = {};
+      if (empty) delete latest[date]; else latest[date] = rec;
+      const sorted = Object.fromEntries(Object.entries(latest).sort(([a], [b]) => b.localeCompare(a)));
+      return [{ path: HARIAN_PATH, content: JSON.stringify(sorted, null, 2) + '\n' }];
+    });
+    harian = latest;
+    renderHarianList();
+    renderHarianForm();
+    toast(empty ? 'Laporan harian dihapus.' : 'Laporan harian tersimpan. Menunggu website diperbarui…');
+  }, 'harianMsg');
+});
+
+// ---------- Pengaturan kunci API Claude ----------
+function renderAi() {
+  const stored = readStore();
+  const has = Boolean(stored && stored.aiEnc);
+  $('aiStatus').textContent = AI_KEY ? 'Aktif' : has ? 'Tersimpan (buka ulang panel untuk memakai)' : 'Belum diatur';
+  $('btnAiForget').hidden = !has;
+  $('aiKey').value = '';
+  $('aiPass').value = '';
+}
+
+$('formAi').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const key = $('aiKey').value.trim();
+  if (!/^sk-ant-[\w-]{20,}$/.test(key)) return toast('Kunci API tidak valid. Harus diawali sk-ant-.', true);
+  const stored = readStore();
+  if (!stored) return;
+  await withBusy(ev.submitter, async () => {
+    await decryptToken(stored.enc, $('aiPass').value);   // memastikan kata sandi panel benar
+    writeStore({ ...stored, aiEnc: await encryptToken(key, $('aiPass').value) });
+    AI_KEY = key;
+    renderAi();
+    toast('Kunci API Claude tersimpan terenkripsi.');
+  });
+});
+
+$('btnAiForget').addEventListener('click', () => {
+  if (!confirm('Hapus kunci API Claude dari perangkat ini?')) return;
+  const stored = readStore();
+  if (stored) { delete stored.aiEnc; writeStore(stored); }
+  AI_KEY = '';
+  renderAi();
+  toast('Kunci API Claude dihapus dari perangkat ini.');
+});
 
 // ================= Google Drive (salinan foto) =================
 // Login lewat Google Identity Services (tanpa server). Izin drive.file hanya
