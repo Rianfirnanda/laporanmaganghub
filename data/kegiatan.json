@@ -1,5 +1,19 @@
 [
   {
+    "id": "20260923-mujht5j1",
+    "tanggal": "2026-09-23",
+    "jam": "14:20",
+    "sesi": "Siang",
+    "judul": "Melanjutkan pengembangan website",
+    "lokasi": "BPS kab. Bengkulu tengah",
+    "keterangan": "Pada hari ini saya memperbaiki dan mengembangkan website lintas-benteng, khususnya pada fitur manajemen kegiatan di activities-dashboard.html serta halaman analisis sentimen di analisis-sentimen.html. Pada analisis sentimen, saya menghapus ketergantungan pada Flask dan memindahkan perhitungan model ke sisi browser menggunakan bobot model dalam format JSON, karena Firebase Hosting hanya dapat menyajikan berkas statis. Saya juga memindahkan seluruh data artikel, tagar, dan log ke Firestore agar data tidak lagi tersimpan di dua tempat berbeda dan tidak hilang saat halaman dimuat ulang. Selain itu saya memperbaiki sejumlah bug, antara lain fitur login yang sempat nonaktif, tab log yang selalu kosong karena memanggil endpoint yang tidak tersedia, tagar dari admin lain yang tidak terbaca, tanggal terbit yang tidak tersimpan, serta diagram donat pada dashboard yang belum menampilkan kategori Netral secara benar. Saya juga melatih ulang model klasifikasi sentimen menggunakan dataset SmSA dengan akurasi 81,4 persen, menambahkan daftar kata opini untuk menangani negasi, serta memperbaiki logika crawler agar hasil pencarian lebih relevan dan tagar terbaca sebagai frasa yang benar. Sebagai tambahan, saya membuat fitur koreksi manual untuk tanggal dan sentimen per artikel agar hasil koreksi manusia tidak tertimpa oleh perhitungan otomatis. Dari kegiatan hari ini saya mempelajari cara memindahkan proses inferensi model machine learning yang semula berjalan di server Flask menjadi berjalan langsung di sisi klien menggunakan bobot model berformat JSON, sebagai solusi atas keterbatasan Firebase Hosting yang hanya mendukung berkas statis. Saya juga belajar mengenai pentingnya konsistensi sumber data ketika data tersebar di beberapa tempat penyimpanan, cara menelusuri bug pada fungsi JavaScript yang memanggil endpoint yang tidak tersedia, serta pentingnya pemilihan model dan kosakata pelatihan yang tepat agar hasil klasifikasi sentimen tidak bias, misalnya akibat ketiadaan kata negasi pada kamus model. Selain itu saya memahami pentingnya menjaga hasil koreksi manual agar tidak ditimpa oleh proses otomatis pada sistem.",
+    "foto": [
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j10.jpg",
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j11.jpg",
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j12.jpg"
+    ]
+  },
+  {
     "id": "20260922-mujho9y7",
     "tanggal": "2026-09-22",
     "jam": "10:06",
