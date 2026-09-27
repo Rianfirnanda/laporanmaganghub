@@ -48,6 +48,11 @@
     "foto": [
       "uploads/2026/09/21/20260921-mujhkq1i-mujhkq1i0.jpg",
       "uploads/2026/09/21/20260921-mujhkq1i-mujhkq1i1.jpg"
-    ]
+    ],
+    "koordinat": {
+      "lat": -3.776041,
+      "lng": 102.319259,
+      "akurasi": 51
+    }
   }
 ]
