@@ -19,6 +19,9 @@ const DATA_PATH = 'data/kegiatan.json';
 const CONFIG_PATH = 'data/config.json';
 const AUTO_LOCK_MINUTES = 15;
 const PBKDF2_ITERATIONS = 310000;
+const UPLOAD_CONCURRENCY = 3;
+const DEPLOY_POLL_MS = 4000;
+const DEPLOY_TIMEOUT_MS = 5 * 60000;
 const NAME_RE = /^[A-Za-z0-9._-]+$/;
 const BRANCH_RE = /^[A-Za-z0-9._/-]+$/;
 
@@ -139,8 +142,7 @@ async function commit(message, buildChanges) {
   const branch = encodeURIComponent(S.branch);
   const ref = await gh(`/git/ref/heads/${branch}`);
   const baseSha = ref.object.sha;
-  const baseCommit = await gh(`/git/commits/${baseSha}`);
-  const changes = await buildChanges(baseSha);
+  const [baseCommit, changes] = await Promise.all([gh(`/git/commits/${baseSha}`), buildChanges(baseSha)]);
   const tree = changes.map(c => {
     const item = { path: c.path, mode: '100644', type: 'blob' };
     if (c.delete) item.sha = null;
@@ -151,6 +153,21 @@ async function commit(message, buildChanges) {
   const newTree = await gh('/git/trees', { method: 'POST', body: { base_tree: baseCommit.tree.sha, tree } });
   const created = await gh('/git/commits', { method: 'POST', body: { message, tree: newTree.sha, parents: [baseSha] } });
   await gh(`/git/refs/heads/${branch}`, { method: 'PATCH', body: { sha: created.sha } });
+  changes.filter(c => c.content !== undefined).forEach(c => watchDeploy(c.path, c.content));
+}
+
+// Jalankan fn untuk tiap item, paling banyak `limit` sekaligus; urutan hasil tetap.
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 function rawUrl(path) {
@@ -441,16 +458,15 @@ $('formEntry').addEventListener('submit', async ev => {
     const tanggal = $('fTanggal').value;
     const id = editingId || `${tanggal.replaceAll('-', '')}-${Date.now().toString(36)}`;
     const [y, m, d] = tanggal.split('-');
-    const fileChanges = [];
-    const uploaded = [];
-
-    for (let i = 0; i < newPhotos.length; i++) {
-      msg('saveMsg', `Memproses foto ${i + 1}/${newPhotos.length}…`);
-      const sha = await uploadBlob(await imageToBase64(newPhotos[i].file));
-      const path = `uploads/${y}/${m}/${d}/${id}-${Date.now().toString(36)}${i}.jpg`;
-      fileChanges.push({ path, sha });
-      uploaded.push(path);
-    }
+    const stamp = Date.now().toString(36);
+    let done = 0;
+    if (newPhotos.length) msg('saveMsg', `Mengunggah foto 0/${newPhotos.length}…`);
+    const fileChanges = await mapLimit(newPhotos, UPLOAD_CONCURRENCY, async (p, i) => {
+      const sha = await uploadBlob(await imageToBase64(p.file));
+      msg('saveMsg', `Mengunggah foto ${++done}/${newPhotos.length}…`);
+      return { path: `uploads/${y}/${m}/${d}/${id}-${stamp}${i}.jpg`, sha };
+    });
+    const uploaded = fileChanges.map(c => c.path);
     removedPhotos.forEach(path => fileChanges.push({ path, delete: true }));
 
     const data = {
@@ -475,7 +491,7 @@ $('formEntry').addEventListener('submit', async ev => {
       return [...fileChanges, { path: DATA_PATH, content: JSON.stringify(sortEntries(latest), null, 2) + '\n' }];
     });
     entries = latest;
-    toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan. Website diperbarui dalam ±1 menit.`);
+    toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan. Menunggu website diperbarui…`);
     resetForm();
     renderList();
   }, 'saveMsg');
@@ -706,7 +722,7 @@ $('formConfig').addEventListener('submit', async ev => {
     CFG = cfg;
     fillConfigForm();
     renderHero(true);
-    toast('Pengaturan tersimpan. Website diperbarui dalam ±1 menit.');
+    toast('Pengaturan tersimpan. Menunggu website diperbarui…');
   }, 'configMsg');
 });
 
@@ -743,6 +759,60 @@ $('btnForget').addEventListener('click', () => {
   lock();
   toast('Token dihapus dari perangkat ini.');
 });
+
+// ================= Status penerbitan website =================
+// GitHub Pages butuh ±30–60 detik untuk menerbitkan commit baru. Panel memantau
+// file data di website ini sampai isinya sama dengan yang baru disimpan.
+const pendingDeploy = new Map();   // path -> isi yang diharapkan
+let deployTimer = null;
+let deployStarted = 0;
+let deployHideTimer = null;
+let deployTick = null;
+
+function watchDeploy(path, content) {
+  pendingDeploy.set(path, content);
+  deployStarted = Date.now();
+  setDeployStatus('pending');
+  clearTimeout(deployTimer);
+  deployTimer = setTimeout(checkDeploy, DEPLOY_POLL_MS);
+}
+
+async function checkDeploy() {
+  for (const [path, content] of pendingDeploy) {
+    try {
+      const res = await fetch(`${path}?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok && (await res.text()) === content) pendingDeploy.delete(path);
+    } catch { /* coba lagi di putaran berikutnya */ }
+  }
+  if (!pendingDeploy.size) {
+    setDeployStatus('done');
+    toast('✅ Website sudah diperbarui.');
+  } else if (Date.now() - deployStarted > DEPLOY_TIMEOUT_MS) {
+    pendingDeploy.clear();
+    setDeployStatus('slow');
+  } else {
+    setDeployStatus('pending');
+    deployTimer = setTimeout(checkDeploy, DEPLOY_POLL_MS);
+  }
+}
+
+function setDeployStatus(state) {
+  const el = $('deployStatus');
+  const secs = Math.round((Date.now() - deployStarted) / 1000);
+  const [ic, cls, text, title] = {
+    pending: ['loader', 'spin', `Memperbarui website… ${secs} dtk`, 'GitHub Pages sedang menerbitkan perubahan'],
+    done: ['check', '', `Website diperbarui (${secs} dtk)`, 'Buka website'],
+    slow: ['alert', '', 'Website belum berubah', 'Sudah lebih dari 5 menit. Cek tab Actions di repository GitHub Anda.']
+  }[state];
+  el.className = `deploy-status ${state}`;
+  el.title = title;
+  el.innerHTML = `${icon(ic, cls)}<span>${esc(text)}</span>`;
+  el.hidden = false;
+  clearTimeout(deployHideTimer);
+  if (state === 'pending' && !deployTick) deployTick = setInterval(() => setDeployStatus('pending'), 1000);
+  if (state !== 'pending') { clearInterval(deployTick); deployTick = null; }
+  if (state === 'done') deployHideTimer = setTimeout(() => { el.hidden = true; }, 15000);
+}
 
 // ================= Utilitas UI =================
 function msg(id, text) { $(id).textContent = text; }

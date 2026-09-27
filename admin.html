@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=3">
+  <link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -24,6 +24,7 @@
         <span class="brand-tag">Admin</span>
       </a>
       <div class="nav-right">
+        <a class="deploy-status" id="deployStatus" href="./" target="_blank" rel="noopener" hidden></a>
         <button class="btn btn-light btn-sm" type="button" id="btnLock" hidden>
           <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><span class="hide-xs">Kunci</span>
         </button>
@@ -337,7 +338,7 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=3"></script>
-  <script src="assets/admin.js?v=3"></script>
+  <script src="assets/common.js?v=4"></script>
+  <script src="assets/admin.js?v=4"></script>
 </body>
 </html>
