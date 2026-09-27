@@ -28,7 +28,16 @@
   "ikonSitus": "uploads/brand/ikon-mujei8zm.png",
   "logoInstansi": "uploads/brand/logo-mujei8zm.png",
   "drive": {
-    "clientId": "19749227616-7egmua5b0fai2f4md48b3u2fouarpt4r.apps.googleusercontent.com"
+    "clientId": "19749227616-7egmua5b0fai2f4md48b3u2fouarpt4r.apps.googleusercontent.com",
+    "skrip": {
+      "url": "https://script.google.com/macros/s/AKfycbzrVAa3tsyXtARVCNQ7CvAg8o4XN-Elgbs1mfbe7fNMftBa27G-Z7dVdi6-ZCRq7npCXQ/exec",
+      "kunciEnc": {
+        "salt": "8405k9/xNLBtZ9s0lfsDbQ==",
+        "iv": "nY9YieAJVRVKyT49",
+        "data": "bZsgfS6hBbPhCRgrTFdepMCfrmbVWLp/P/vSd/0+80zkqKRpn5gg62x7ssEyajcj",
+        "iter": 310000
+      }
+    }
   },
   "hariLibur": [
     {
