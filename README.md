@@ -50,7 +50,7 @@ Semuanya opsional dan bisa diatur kapan saja.
 | Laporan AI tetap jalan walau panel tidak dibuka | Di repo: **Settings → Secrets and variables → Actions → New repository secret**, isi `GEMINI_API_KEY` dan/atau `GROQ_API_KEY` |
 | Salinan foto ke Google Drive | Tab **Keamanan**, kartu **Google Drive tanpa login (Apps Script)**. Ikuti langkah di kartunya |
 | Notifikasi push | Tab **Keamanan**, kartu **Notifikasi push**. Buat kunci, simpan sebagai secret `VAPID_PRIVATE_KEY`, lalu **Aktifkan di perangkat ini**. Di iPhone, tambahkan ke layar utama dulu (iOS 16.4 ke atas) |
-| HP atau laptop kedua | Buka panel, hubungkan dengan token yang sama. Untuk Google Drive, ketuk **Salin kunci** di perangkat pertama lalu tempel di perangkat kedua |
+| HP atau laptop kedua | Buka panel, hubungkan dengan token yang sama. Untuk Google Drive, di perangkat pertama ketuk **Pasang di perangkat lain**, lalu ketik kode yang muncul di perangkat kedua |
 
 ## Keamanan
 
