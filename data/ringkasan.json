@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T16:39:01.000Z",
+  "diperbarui": "2026-09-27T17:09:12.028Z",
   "minggu": 1,
-  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu ini ia mengembangkan website lintas‑benteng dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan serta bug. Ia juga berpartisipasi dalam sosialisasi SSO, menyiapkan atribut Hari Statistik Nasional, dan membantu pelaksanaan lomba.",
+  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selanjutnya ia mengembangkan website monitoring kegiatan magang, menambah dashboard, visualisasi, serta memperbaiki fitur manajemen dan bug. Pada akhir minggu ia terlibat dalam sosialisasi SSO, penanganan anomali data, pemasangan banner HSN, dan persiapan lomba serta apel HSN.",
   "sorotan": [
     "Pengembangan dashboard interaktif",
-    "Perbaikan bug login",
-    "Persiapan acara HSN"
+    "Perbaikan bug login dan data",
+    "Persiapan lomba HSN"
   ],
-  "keseluruhan": "Sepanjang minggu pertama, Rian menunjukkan kemampuan cepat belajar dan kontribusi nyata pada pengembangan sistem BPS. Ia berhasil mengintegrasikan fitur baru, mengatasi masalah teknis, serta mendukung kegiatan statistik nasional.",
+  "keseluruhan": "Rian menunjukkan kemampuan cepat beradaptasi dengan lingkungan BPS serta menguasai teknologi web dan cloud. Selama minggu pertama ia telah berkontribusi pada pengembangan sistem monitoring dan mendukung kegiatan statistik nasional, menandai langkah awal yang produktif dalam magangnya.",
   "mingguan": {
-    "1": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu ini ia mengembangkan website lintas‑benteng dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan serta bug. Ia juga berpartisipasi dalam sosialisasi SSO, menyiapkan atribut Hari Statistik Nasional, dan membantu pelaksanaan lomba."
+    "1": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selanjutnya ia mengembangkan website monitoring kegiatan magang, menambah dashboard, visualisasi, serta memperbaiki fitur manajemen dan bug. Pada akhir minggu ia terlibat dalam sosialisasi SSO, penanganan anomali data, pemasangan banner HSN, dan persiapan lomba serta apel HSN."
   }
 }
