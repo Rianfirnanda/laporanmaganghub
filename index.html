@@ -8,12 +8,12 @@
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
   <meta name="theme-color" content="#163ba2">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Cpath d='M22 16h14l8 8v24H22z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M28 34h10M28 41h10' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Cpath d='M22 16h14l8 8v24H22z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M28 34h10M28 41h10' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=5">
+  <link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -157,7 +157,10 @@
       <div class="footer-grid" id="footerGrid"></div>
       <div class="footer-bottom">
         <span id="footerText"></span>
-        <a href="admin.html" id="adminLink" hidden>Panel admin</a>
+        <span class="footer-links">
+          <a id="portoLink" target="_blank" rel="noopener" hidden></a>
+          <a href="admin.html" id="adminLink" hidden>Panel admin</a>
+        </span>
       </div>
     </div>
   </footer>
@@ -172,7 +175,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=5"></script>
-  <script src="assets/app.js?v=5"></script>
+  <script src="assets/common.js?v=6"></script>
+  <script src="assets/app.js?v=6"></script>
 </body>
 </html>

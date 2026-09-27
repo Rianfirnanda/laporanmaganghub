@@ -524,3 +524,15 @@ input[type="file"] { min-height: 0; }
   .week-label { break-before: page; margin-top: 0; }
   .week-label:first-child { break-before: auto; }
 }
+
+/* ---------- Gambar yang bisa diganti (ikon, logo) ---------- */
+.brand-mark.has-img { background: none; overflow: hidden; }
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; }
+.org-logo.has-img { background: #fff; border: 1px solid var(--line); overflow: hidden; }
+.org-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.avatar-logo { width: 72px; height: 72px; border-radius: 16px; background: #fff; font-size: 20px; }
+.avatar-logo img { object-fit: contain; padding: 6px; }
+.footer-porto { margin-top: 14px; background: rgba(255, 255, 255, .1); color: #fff; border-color: rgba(255, 255, 255, .25); }
+.footer-porto:hover { background: rgba(255, 255, 255, .18); }
+.footer-col a.footer-porto { color: #fff; text-decoration: none; }
+.footer-links { display: inline-flex; gap: 16px; flex-wrap: wrap; }

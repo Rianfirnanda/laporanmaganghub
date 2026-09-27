@@ -48,6 +48,11 @@ function renderProfile() {
   document.title = CONFIG.judulSitus || `Laporan Magang · ${CONFIG.nama}`;
   $('avatar').replaceChildren(avatarNode(CONFIG));
   $('navAvatar').replaceChildren(avatarNode(CONFIG));
+  const ikon = safePath(CONFIG.ikonSitus);
+  if (ikon) {
+    $('favicon').href = ikon;
+    document.querySelectorAll('.brand-mark').forEach(m => setBrandImage(m, ikon));
+  }
   $('nama').textContent = CONFIG.nama;
   $('posisi').textContent = CONFIG.posisi || '';
   $('posisi').hidden = !CONFIG.posisi;
@@ -85,7 +90,16 @@ function renderBanner() {
 }
 
 function renderSidebar() {
-  $('orgLogo').textContent = inisialInstansi(CONFIG.instansi);
+  const logo = safePath(CONFIG.logoInstansi);
+  if (logo) {
+    const img = document.createElement('img');
+    img.src = logo;
+    img.alt = `Logo ${CONFIG.instansi}`;
+    $('orgLogo').replaceChildren(img);
+    $('orgLogo').classList.add('has-img');
+  } else {
+    $('orgLogo').textContent = inisialInstansi(CONFIG.instansi);
+  }
   $('orgName').textContent = CONFIG.instansi || '';
   $('orgRole').textContent = CONFIG.posisi || '';
   const m = CONFIG.mentor || {};
@@ -118,12 +132,24 @@ function inisialInstansi(nama) {
   return inisial(words.join(' ') || nama);
 }
 
+const DEFAULT_PORTOFOLIO = 'https://rianfirnanda.vercel.app';
+
+function setBrandImage(el, src) {
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  el.replaceChildren(img);
+  el.classList.add('has-img');
+}
+
 function renderFooter() {
   const f = CONFIG.footer || {};
   const periode = `${formatTanggal(CONFIG.tanggalMulai, false)} – ${formatTanggal(CONFIG.tanggalSelesai, false)}`;
+  const porto = safeUrl(CONFIG.portofolio ?? DEFAULT_PORTOFOLIO);
   let html = `<div class="footer-col footer-about">
     <a class="brand brand-light" href="./"><span class="brand-mark">${icon('file')}</span><span class="brand-text">Laporan<b>magang</b></span></a>
     <p>${esc(CONFIG.nama)}<br>${esc(CONFIG.posisi)} · ${esc(CONFIG.instansi)}<br>${periode}</p>
+    ${porto ? `<a class="btn btn-sm footer-porto" href="${esc(porto)}" target="_blank" rel="noopener">${icon('user')} Lihat portofolio saya</a>` : ''}
   </div>`;
   html += (f.bagian || []).filter(b => b.judul || b.isi).map(b => `<div class="footer-col">
     ${b.judul ? `<h4>${esc(b.judul)}</h4>` : ''}
@@ -135,6 +161,13 @@ function renderFooter() {
       `<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || l.url)}</a></li>`).join('')}</ul></div>`;
   }
   $('footerGrid').innerHTML = html;
+  const ikon = safePath(CONFIG.ikonSitus);
+  if (ikon) setBrandImage($('footerGrid').querySelector('.brand-mark'), ikon);
+  $('portoLink').hidden = !porto;
+  if (porto) {
+    $('portoLink').href = porto;
+    $('portoLink').textContent = `Dibuat oleh ${CONFIG.nama} · ${porto.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗`;
+  }
   $('footerText').textContent = f.teks || `© ${new Date().getFullYear()} ${CONFIG.nama} · ${CONFIG.instansi}`;
   $('adminLink').hidden = !CONFIG.tampilkanLinkAdmin;
 }
