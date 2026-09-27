@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T10:26:33.542Z",
+  "diperbarui": "2026-09-27T10:27:15.531Z",
   "minggu": 1,
-  "mingguIni": "Peserta mengikuti perkenalan MagangHub Batch 2, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Selama minggu ini ia mengembangkan dan menyempurnakan fitur dashboard serta modul analisis sentimen, termasuk pelatihan ulang model dengan akurasi 81,4 %. Selain itu, ia ikut sosialisasi SSO, penanganan anomali data, dan kegiatan peringatan Hari Statistik Nasional.",
+  "mingguIni": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia mengembangkan dan menyempurnakan fitur visualisasi serta manajemen data pada dashboard kegiatan, memindahkan proses analisis sentimen ke sisi browser, serta melatih ulang model klasifikasi dengan akurasi 81,4 persen. Selain itu, ia mengikuti sosialisasi SSO, menangani anomali data, dan berpartisipasi dalam rangkaian lomba serta persiapan Hari Statistik Nasional.",
   "sorotan": [
-    "Pengembangan dashboard aktivitas",
-    "Pelatihan model sentimen",
-    "Sosialisasi SSO dan VPN"
+    "Pengembangan dashboard visualisasi",
+    "Model sentimen akurasi tinggi",
+    "Partisipasi kegiatan HSN"
   ],
-  "keseluruhan": "Sejak memulai magang, peserta telah aktif menguasai sistem BPS, mengimplementasikan fitur baru pada website, dan berkontribusi pada kegiatan internal. Pengalaman ini memperkuat kemampuan teknis dan kolaborasinya di lingkungan BPS Kabupaten Bengkulu Tengah.",
+  "keseluruhan": "Rian telah menunjukkan inisiatif kuat dalam memahami sistem BPS serta mengoptimalkan aplikasi monitoring. Selama minggu pertama, ia berhasil mengintegrasikan fitur baru, mengatasi masalah teknis, dan berkontribusi pada kegiatan kantor, menandai progres yang menjanjikan dalam magangnya.",
   "mingguan": {
-    "1": "Peserta mengikuti perkenalan MagangHub Batch 2, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Selama minggu ini ia mengembangkan dan menyempurnakan fitur dashboard serta modul analisis sentimen, termasuk pelatihan ulang model dengan akurasi 81,4 %. Selain itu, ia ikut sosialisasi SSO, penanganan anomali data, dan kegiatan peringatan Hari Statistik Nasional."
+    "1": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia mengembangkan dan menyempurnakan fitur visualisasi serta manajemen data pada dashboard kegiatan, memindahkan proses analisis sentimen ke sisi browser, serta melatih ulang model klasifikasi dengan akurasi 81,4 persen. Selain itu, ia mengikuti sosialisasi SSO, menangani anomali data, dan berpartisipasi dalam rangkaian lomba serta persiapan Hari Statistik Nasional."
   }
 }
