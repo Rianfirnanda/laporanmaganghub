@@ -1,0 +1,48 @@
+name: Notifikasi push
+
+# Mengirim notifikasi push ke HP/laptop yang diaktifkan di panel admin
+# (Keamanan → Notifikasi push) setiap ada perubahan di repository.
+# Butuh secret VAPID_PRIVATE_KEY. Laporan AI dari robot dikirim oleh
+# workflow "Laporan harian AI" sendiri (commit robot tidak memicu workflow lain).
+on:
+  push:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: notifikasi-push
+  cancel-in-progress: false
+
+jobs:
+  kirim:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.BRANCH }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Kirim notifikasi
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node scripts/notifikasi.mjs --dari-push
+
+      - name: Hapus langganan yang kedaluwarsa
+        run: |
+          if git diff --quiet -- data/notifikasi.json; then exit 0; fi
+          git config user.name "laporan-magang-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/notifikasi.json
+          git commit -m "Hapus langganan notifikasi yang kedaluwarsa"
+          for i in 1 2 3; do
+            git push origin "HEAD:$BRANCH" && exit 0
+            git pull --rebase origin "$BRANCH" || { git rebase --abort; exit 0; }
+          done

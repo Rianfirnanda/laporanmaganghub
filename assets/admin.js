@@ -423,6 +423,7 @@ async function enterApp() {
   await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
   renderHarianForm();
   catchUpAi();
+  if (typeof initNotifikasi === 'function') initNotifikasi();
 }
 
 // Pintasan dari ikon aplikasi di layar utama HP (manifest.webmanifest).
@@ -443,6 +444,7 @@ function handleShortcut() {
 
 function lock(reason) {
   clearSession();
+  if (typeof notifKunci === 'function') notifKunci();
   TOKEN = '';
   AI_KEY = '';
   GROQ_KEY = '';
@@ -476,7 +478,10 @@ function openTab(name) {
     if (!gps && !gpsPromise) autoLocate();
     catchUpAi();
   }
-  if (name === 'keamanan') loadStorage();
+  if (name === 'keamanan') {
+    loadStorage();
+    if (typeof renderNotif === 'function') renderNotif();
+  }
 }
 
 $('tabbar').addEventListener('click', ev => {
@@ -2552,6 +2557,7 @@ $('btnDriveTest').addEventListener('click', async ev => {
 function adaIsianBelumDisimpan() {
   if (busy > 0 || newPhotos.length || editingId) return true;
   if (!$('startCard').hidden && $('mbNama').value.trim()) return true;
+  if (typeof rahasiaBaru === 'string' && rahasiaBaru) return true;   // kunci notifikasi belum disalin
   return ['fJudul', 'fKet', 'hRingkasan', 'hPembelajaran', 'hKendala', 'aiKey', 'groqKey'].some(id => {
     const el = $(id);
     return el && el.value.trim() && el.value !== el.defaultValue && !(id.startsWith('h') && harianTersimpan(id));
@@ -2665,12 +2671,15 @@ $('formStart').addEventListener('submit', async ev => {
       };
       // Drive milik pemilik lama tidak ikut; milik sendiri (sudah diatur di repo ini) dipertahankan.
       if (milikSendiri && old.drive) baru.drive = old.drive;
+      if (milikSendiri && old.notifikasi) baru.notifikasi = old.notifikasi;
       return [
         ...files.map(f => ({ path: f.path, delete: true })),
         { path: DATA_PATH, content: '[]\n' },
         { path: HARIAN_PATH, content: '{}\n' },
         { path: RINGKASAN_PATH, content: '{}\n' },
-        { path: CONFIG_PATH, content: JSON.stringify(baru, null, 2) + '\n' }
+        { path: CONFIG_PATH, content: JSON.stringify(baru, null, 2) + '\n' },
+        // Perangkat notifikasi pemilik lama tidak ikut.
+        ...(milikSendiri ? [] : [{ path: 'data/notifikasi.json', content: JSON.stringify({ langganan: [] }, null, 2) + '\n' }])
       ];
     });
     // Client ID Google pemilik lama yang sempat tersalin ke perangkat ini.
@@ -2687,6 +2696,7 @@ $('formStart').addEventListener('submit', async ev => {
     renderHarianForm();
     renderDrive();
     renderScript();
+    if (typeof initNotifikasi === 'function') initNotifikasi();
     openTab('profil');
     toast('Repository sudah bersih dan profil Anda tersimpan. Lengkapi foto, logo, dan footer di tab Profil.');
   }, 'startMsg');

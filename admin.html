@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://generativelanguage.googleapis.com https://api.groq.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=26"></script>
+  <script src="assets/theme.js?v=27"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=26">
+  <link rel="stylesheet" href="assets/style.css?v=27">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -519,6 +519,59 @@
             <div class="card-body"><dl class="kv kv-wide" id="secInfo"></dl></div>
           </section>
 
+          <section class="card" id="notifCard">
+            <div class="card-header">
+              <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <div class="head-text"><h3>Notifikasi push</h3><span id="notifStatus">Memeriksa…</span></div>
+            </div>
+            <div class="card-body form">
+              <p class="note">HP atau laptop ini akan menerima notifikasi setiap laporan harian AI selesai atau gagal, setiap ada perubahan data, dan saat website diperbarui. Notifikasi dikirim GitHub Actions, jadi tetap datang walau website sedang tidak dibuka.</p>
+              <p class="note" id="notifUnsupported" hidden>Browser ini belum mendukung notifikasi push. Di iPhone/iPad (iOS 16.4+), buka website di Safari → <b>Bagikan → Tambahkan ke Layar Utama</b>, lalu buka panel dari ikon itu.</p>
+
+              <div id="notifKeyBox">
+                <h4 class="sub-head">1. Kunci notifikasi (sekali untuk semua perangkat)</h4>
+                <p class="muted small" id="notifKeyInfo"></p>
+                <div class="secret-once" id="notifSecretBox" hidden>
+                  <p><b>Salin kunci rahasia ini sekarang.</b> Kunci hanya tampil sekali dan tidak disimpan di mana pun.</p>
+                  <div class="input-with-btn">
+                    <input id="notifSecret" class="secret-text" readonly autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+                    <button class="btn btn-light" type="button" id="btnNotifCopy">Salin</button>
+                  </div>
+                  <ol class="steps-setup">
+                    <li>Buka <a id="notifSecretLink" target="_blank" rel="noopener noreferrer" href="https://github.com">GitHub → Settings → Secrets and variables → Actions → New repository secret</a>.</li>
+                    <li>Name: <code>VAPID_PRIVATE_KEY</code>, Secret: tempel kunci di atas → <b>Add secret</b>.</li>
+                    <li>Kembali ke sini, lalu aktifkan notifikasi di perangkat (langkah 2).</li>
+                  </ol>
+                  <button class="btn btn-outline btn-sm" type="button" id="btnNotifSecretDone">Sudah saya simpan</button>
+                </div>
+                <div class="actions">
+                  <button class="btn btn-light btn-sm" type="button" id="btnNotifKey">Buat kunci notifikasi</button>
+                </div>
+              </div>
+
+              <div id="notifDeviceBox">
+                <h4 class="sub-head">2. Perangkat ini</h4>
+                <div class="check-grid">
+                  <label class="check-row"><input type="checkbox" id="nAi" checked> Laporan harian AI selesai / gagal</label>
+                  <label class="check-row"><input type="checkbox" id="nData" checked> Kegiatan, laporan, dan profil berubah</label>
+                  <label class="check-row"><input type="checkbox" id="nSistem" checked> Website diperbarui &amp; perangkat baru terdaftar</label>
+                </div>
+                <div class="actions">
+                  <button class="btn btn-primary btn-sm" type="button" id="btnNotifOn">Aktifkan di perangkat ini</button>
+                  <button class="btn btn-light btn-sm" type="button" id="btnNotifPref" hidden>Simpan pilihan</button>
+                  <button class="btn btn-outline btn-sm" type="button" id="btnNotifTest" hidden>Kirim tes</button>
+                  <button class="btn btn-danger btn-sm" type="button" id="btnNotifOff" hidden>Nonaktifkan</button>
+                  <span class="progress-msg" id="notifMsg"></span>
+                </div>
+              </div>
+
+              <details class="help">
+                <summary>Perangkat terdaftar (<span id="notifCount">0</span>)</summary>
+                <div id="notifList" class="device-list"></div>
+              </details>
+            </div>
+          </section>
+
           <section class="card" id="scriptCard">
             <div class="card-header">
               <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-cloud"/></svg></span>
@@ -728,8 +781,9 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=26"></script>
-  <script src="assets/ai.js?v=26"></script>
-  <script src="assets/admin.js?v=26"></script>
+  <script src="assets/common.js?v=27"></script>
+  <script src="assets/ai.js?v=27"></script>
+  <script src="assets/admin.js?v=27"></script>
+  <script src="assets/notifikasi.js?v=27"></script>
 </body>
 </html>

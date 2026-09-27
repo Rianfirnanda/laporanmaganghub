@@ -1,15 +1,14 @@
 // Mode terang/gelap. Dimuat di <head> (sebelum halaman tampil) agar tidak berkedip.
-// Pilihan pengguna disimpan per perangkat; tanpa pilihan, ikut pengaturan sistem.
+// Pilihan pengguna disimpan per perangkat; pengunjung baru selalu mulai dari mode terang.
 (function () {
   const KEY = 'laporanmagang.theme';
   const root = document.documentElement;
-  const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   function saved() {
     try { return localStorage.getItem(KEY); } catch { return null; }
   }
   function current() {
-    return saved() || (media && media.matches ? 'dark' : 'light');
+    return saved() === 'dark' ? 'dark' : 'light';
   }
   function apply(theme) {
     root.dataset.theme = theme;
@@ -20,7 +19,6 @@
   }
 
   apply(current());
-  if (media && media.addEventListener) media.addEventListener('change', () => { if (!saved()) apply(current()); });
 
   document.addEventListener('click', ev => {
     const b = ev.target.closest('[data-theme-toggle]');
