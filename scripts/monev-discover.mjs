@@ -110,8 +110,11 @@ async function main() {
   });
 
   try {
-    const resp = await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle', timeout: 60000 });
+    // Jangan menunggu "networkidle": situs SPA bisa terus memuat di latar.
+    const resp = await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 90000 });
     log(`\n- Status awal: HTTP ${resp ? resp.status() : '?'}`);
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(3000);
   } catch (e) {
     log(`\n❌ Tidak bisa membuka monev dari server GitHub: ${e.message.split('\n')[0]}`);
     log('Kemungkinan situs memblokir akses dari luar Indonesia.');
@@ -190,7 +193,8 @@ async function main() {
         const target = new URL(l.h, page.url()).href;
         if (visited.has(cleanUrl(target))) continue;
         visited.add(cleanUrl(target));
-        await page.goto(target, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
       } else {
         await page.getByText(l.t, { exact: true }).first().click({ timeout: 8000 });
         await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});

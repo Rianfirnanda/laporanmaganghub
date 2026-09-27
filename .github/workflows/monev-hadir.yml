@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -28,6 +28,17 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1
           npx playwright install --with-deps chromium
+
+      - name: Uji koneksi ke monev dan SIAPkerja
+        continue-on-error: true
+        run: |
+          {
+            echo "### Uji koneksi dari server GitHub"
+            for url in https://monev.maganghub.kemnaker.go.id/ https://maganghub.kemnaker.go.id/ https://account.kemnaker.go.id/ https://siapkerja.kemnaker.go.id/ https://www.google.com/; do
+              res=$(curl -sS -o /dev/null -L --max-time 30 -w "HTTP %{http_code} · %{time_total} dtk" "$url" 2>&1 || true)
+              echo "- \`$url\` → $res"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Login dan laporkan struktur halaman
         env:
