@@ -11,33 +11,33 @@
   },
   "2026-09-25": {
     "status": "Hadir",
-    "ringkasan": "Pagi saya mengikuti rangkaian lomba Hari Statistik Nasional 2026 bersama mitra statistik di kantor BPS Kabupaten Bengkulu Tengah. Setelah itu, pada sore saya menyiapkan atribut untuk apel peringatan HSN, termasuk membersihkan lapangan yang akan digunakan. Saya juga membantu memasang perlengkapan audio dan bertugas sebagai operator pemutar sound saat acara apel berlangsung.",
-    "pembelajaran": "Pengalaman mengatur peralatan audio untuk acara besar memperdalam kemampuan teknis saya dalam mengoperasikan sound system dan berkoordinasi dengan tim acara.",
-    "kendala": "-",
+    "ringkasan": "Saya mengikuti rangkaian lomba Hari Statistik Nasional 2026 bersama mitra statistik di kantor BPS Kabupaten Bengkulu Tengah pada pagi hari, kemudian pada sore hari saya menyiapkan atribut untuk apel peringatan HSN, membersihkan lapangan, dan membantu setting audio sebagai operator sound.",
+    "pembelajaran": "Pengalaman mengatur peralatan audio untuk acara memberi saya pemahaman lebih baik tentang prosedur teknis sound system di lingkungan kantor.",
+    "kendala": "Tidak ada kendala berarti, namun perlu memastikan semua kabel audio terhubung dengan aman sebelum acara dimulai.",
     "auto": true,
     "sumber": "7cstno",
-    "model": "Groq · openai/gpt-oss-120b",
-    "diperbarui": "2026-09-27T15:34:45.175Z"
+    "model": "Groq · openai/gpt-oss-120b (robot)",
+    "diperbarui": "2026-09-27T16:38:57.521Z"
   },
   "2026-09-24": {
     "status": "Hadir",
-    "ringkasan": "Saya menyiapkan atribut lomba HSN bersama mitra BPS, termasuk perlengkapan seperti balon, di kantor BPS Kabupaten Bengkulu Tengah. Selanjutnya saya memasang banner di depan kantor serta mengikuti sosialisasi Zoom tentang SSO, VPN, dan email baru yang diselenggarakan Direktorat Jenderal SIS. Pada siang hari saya menangani anomali data Kecamatan Merigi Sakti di website lintas‑benteng dan memasang spanduk peringatan Hari Statistik Nasional, lalu bersama tim melakukan persiapan akhir untuk lomba HSN.",
-    "pembelajaran": "Dari kegiatan tersebut saya belajar mengelola persiapan logistik lomba serta memperbaiki data yang tidak konsisten pada sistem lintas‑benteng. Selain itu, saya memperoleh pemahaman praktis tentang konfigurasi SSO dan VPN melalui sesi Zoom.",
-    "kendala": "-",
-    "diperbarui": "2026-09-27T15:27:00.174Z",
+    "ringkasan": "Saya memulai hari dengan mengikuti sosialisasi via Zoom tentang SSO, VPN, dan email baru yang diadakan Direktorat Jenderal SIS. Setelah itu, saya menangani anomali data untuk Kecamatan Merigi Sakti pada website lintas‑benteng dan memasang banner peringatan Hari Statistik Nasional di depan kantor BPS. Menjelang sore, saya menyiapkan atribut lomba HSN bersama tim, termasuk menyiapkan perlengkapan seperti balon, serta menyiapkan tempat untuk lomba yang akan dilaksanakan pada hari Jumat.",
+    "pembelajaran": "Dari sesi Zoom saya memahami konfigurasi dasar SSO dan penggunaan VPN untuk akses internal, sementara penanganan anomali data melatih kemampuan analisis data geografis. Persiapan atribut lomba memperkuat koordinasi tim dalam mengatur logistik acara.",
+    "kendala": "Tidak ada kendala berarti selama proses persiapan, namun perlu memastikan semua atribut lomba tersedia tepat waktu untuk menghindari penundaan pada hari pelaksanaan.",
+    "diperbarui": "2026-09-27T16:38:58.541Z",
     "auto": true,
     "sumber": "ru22oa",
-    "model": "Groq · openai/gpt-oss-120b"
+    "model": "Groq · openai/gpt-oss-120b (robot)"
   },
   "2026-09-23": {
     "status": "Hadir",
-    "ringkasan": "Saya melanjutkan pengembangan website lintas‑benteng untuk BPS Kabupaten Bengkulu Tengah, fokus pada perbaikan fitur manajemen kegiatan di activities-dashboard.html dan halaman analisis‑sentimen.html. Pada halaman analisis sentimen, proses inferensi dipindahkan dari Flask ke browser dengan menggunakan bobot model dalam format JSON, serta semua data artikel, tagar, dan log dipindahkan ke Firestore. Selain itu, saya memperbaiki beberapa bug seperti login yang tidak aktif, tab log kosong, tagar yang tidak terbaca, tanggal terbit yang tidak tersimpan, serta diagram donat yang belum menampilkan kategori Netral, dan menambahkan fitur koreksi manual untuk tanggal dan sentimen per artikel.",
-    "pembelajaran": "Saya belajar cara mengonversi model machine learning agar dapat dijalankan di sisi klien menggunakan JSON, serta pentingnya konsistensi penyimpanan data di satu tempat untuk menghindari kehilangan informasi. Proses debugging JavaScript untuk endpoint yang tidak tersedia dan penyesuaian kosakata model demi mengurangi bias juga menjadi bagian dari pembelajaran.",
-    "kendala": "-",
-    "diperbarui": "2026-09-27T11:33:11.294Z",
+    "ringkasan": "Saya melanjutkan pengembangan website lintas-benteng di BPS Kabupaten Bengkulu Tengah, memperbaiki fitur manajemen kegiatan pada activities-dashboard.html dan halaman analisis-sentimen.html. Pada analisis sentimen saya menghapus ketergantungan Flask, memindahkan perhitungan model ke sisi browser dengan bobot JSON, serta memindahkan semua data artikel, tagar, dan log ke Firestore. Selain itu saya memperbaiki bug login, tab log kosong, tagar admin lain, tanggal terbit yang tidak tersimpan, dan diagram donat yang belum menampilkan kategori Netral, serta menambahkan fitur koreksi manual untuk tanggal dan sentimen per artikel.",
+    "pembelajaran": "Saya belajar cara melakukan inferensi model machine learning di sisi klien menggunakan bobot JSON sebagai solusi hosting statis, serta pentingnya konsistensi penyimpanan data di Firestore untuk menghindari kehilangan informasi. Selain itu saya memperdalam teknik debugging JavaScript dan penyesuaian kosakata model agar klasifikasi sentimen lebih akurat, terutama dalam menangani negasi.",
+    "kendala": "Tidak ada kendala signifikan yang menghambat pekerjaan hari ini.",
+    "diperbarui": "2026-09-27T16:38:59.609Z",
     "auto": true,
     "sumber": "l5uukx",
-    "model": "Groq · openai/gpt-oss-120b"
+    "model": "Groq · openai/gpt-oss-120b (robot)"
   },
   "2026-09-22": {
     "status": "Hadir",

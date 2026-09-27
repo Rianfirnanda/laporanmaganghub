@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T15:34:47.526Z",
+  "diperbarui": "2026-09-27T16:39:01.000Z",
   "minggu": 1,
-  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, kemudian melanjutkan pengembangan website monitoring magang dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan. Ia juga menyiapkan atribut serta mendukung pelaksanaan lomba Hari Statistik Nasional bersama tim BPS.",
+  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu ini ia mengembangkan website lintas‑benteng dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan serta bug. Ia juga berpartisipasi dalam sosialisasi SSO, menyiapkan atribut Hari Statistik Nasional, dan membantu pelaksanaan lomba.",
   "sorotan": [
-    "Pengembangan dashboard kegiatan",
-    "Perbaikan fitur analisis sentimen",
-    "Persiapan lomba HSN"
+    "Pengembangan dashboard interaktif",
+    "Perbaikan bug login",
+    "Persiapan acara HSN"
   ],
-  "keseluruhan": "Sepanjang magang, Rian telah menguasai alur kerja sistem BPS dan berkontribusi pada pengembangan aplikasi lintas‑benteng. Pengalaman ini memperkuat kemampuan teknisnya sekaligus memperluas jaringan kerja dengan tim BPS.",
+  "keseluruhan": "Sepanjang minggu pertama, Rian menunjukkan kemampuan cepat belajar dan kontribusi nyata pada pengembangan sistem BPS. Ia berhasil mengintegrasikan fitur baru, mengatasi masalah teknis, serta mendukung kegiatan statistik nasional.",
   "mingguan": {
-    "1": "Rian mengikuti perkenalan batch MagangHub, kemudian melanjutkan pengembangan website monitoring magang dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan. Ia juga menyiapkan atribut serta mendukung pelaksanaan lomba Hari Statistik Nasional bersama tim BPS."
+    "1": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu ini ia mengembangkan website lintas‑benteng dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan serta bug. Ia juga berpartisipasi dalam sosialisasi SSO, menyiapkan atribut Hari Statistik Nasional, dan membantu pelaksanaan lomba."
   }
 }
