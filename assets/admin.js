@@ -302,12 +302,15 @@ $('btnForgot').addEventListener('click', () => {
 async function enterApp() {
   show('app');
   renderSecurity();
+  renderDrive();
+  if (driveReady()) loadGis().catch(() => {});
   resetForm();
   await Promise.all([loadEntries(), loadConfig()]);
 }
 
 function lock(reason) {
   TOKEN = '';
+  driveToken = null;
   entries = [];
   CFG = null;
   $('entryList').innerHTML = '<p class="empty">Memuat…</p>';
@@ -457,6 +460,10 @@ $('btnCancelEdit').addEventListener('click', resetForm);
 
 $('formEntry').addEventListener('submit', async ev => {
   ev.preventDefault();
+  // Harus dipanggil langsung di dalam klik agar jendela login Google tidak diblokir.
+  const photosForDrive = driveReady() ? newPhotos.map(p => p.file) : [];
+  const drivePromise = photosForDrive.length ? ensureDriveToken() : null;
+  if (drivePromise) drivePromise.catch(() => {});
   await withBusy($('btnSave'), async () => {
     const tanggal = $('fTanggal').value;
     const id = editingId || `${tanggal.replaceAll('-', '')}-${Date.now().toString(36)}`;
@@ -494,7 +501,19 @@ $('formEntry').addEventListener('submit', async ev => {
       return [...fileChanges, { path: DATA_PATH, content: JSON.stringify(sortEntries(latest), null, 2) + '\n' }];
     });
     entries = latest;
-    toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan. Menunggu website diperbarui…`);
+    let driveMsg = '';
+    if (drivePromise) {
+      try {
+        await drivePromise;
+        msg('saveMsg', 'Menyalin foto ke Google Drive…');
+        await copyToDrive(photosForDrive, data);
+        driveMsg = ' Foto juga tersalin ke Google Drive.';
+      } catch (e) {
+        toast(`Tersimpan di GitHub, tetapi gagal menyalin ke Google Drive: ${e.message}`, true);
+        driveMsg = null;
+      }
+    }
+    if (driveMsg !== null) toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan.${driveMsg} Menunggu website diperbarui…`);
     resetForm();
     renderList();
   }, 'saveMsg');
@@ -848,6 +867,151 @@ function setDeployStatus(state) {
   if (state !== 'pending') { clearInterval(deployTick); deployTick = null; }
   if (state === 'done') deployHideTimer = setTimeout(() => { el.hidden = true; }, 15000);
 }
+
+// ================= Google Drive (salinan foto) =================
+// Login lewat Google Identity Services (tanpa server). Izin drive.file hanya
+// memberi akses ke file/folder yang dibuat panel ini, bukan seluruh Drive.
+const DRIVE_KEY = 'laporanmagang.drive';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_ROOT = 'Laporan Magang';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+let driveCfg = readDriveCfg();
+let driveToken = null;
+let driveTokenExp = 0;
+let gisLoading = null;
+const driveFolders = {};
+
+function readDriveCfg() {
+  try { return JSON.parse(localStorage.getItem(DRIVE_KEY)) || {}; } catch { return {}; }
+}
+
+function driveReady() {
+  return Boolean(driveCfg.enabled && driveCfg.clientId);
+}
+
+function loadGis() {
+  if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if (!gisLoading) {
+    gisLoading = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://accounts.google.com/gsi/client';
+      sc.onload = resolve;
+      sc.onerror = () => { gisLoading = null; reject(new Error('Gagal memuat layanan login Google.')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return gisLoading;
+}
+
+// Dipanggil sinkron dari event klik; jendela login hanya muncul bila token habis.
+function ensureDriveToken() {
+  if (driveToken && Date.now() < driveTokenExp - 60000) return Promise.resolve(driveToken);
+  if (!(window.google && google.accounts && google.accounts.oauth2)) {
+    loadGis().catch(() => {});
+    return Promise.reject(new Error('Layanan Google belum termuat. Coba simpan sekali lagi.'));
+  }
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: driveCfg.clientId,
+      scope: DRIVE_SCOPE,
+      callback: r => {
+        if (r.error) return reject(new Error(`Google menolak: ${r.error}`));
+        driveToken = r.access_token;
+        driveTokenExp = Date.now() + Number(r.expires_in || 3600) * 1000;
+        resolve(driveToken);
+      },
+      error_callback: e => reject(new Error(e && e.type === 'popup_closed' ? 'Jendela login Google ditutup.'
+        : e && e.type === 'popup_failed_to_open' ? 'Jendela login Google diblokir browser. Izinkan pop-up untuk situs ini.'
+        : `Login Google gagal (${(e && e.type) || 'tidak diketahui'}).`))
+    });
+    client.requestAccessToken();
+  });
+}
+
+async function gdrive(url, opts = {}) {
+  const res = await fetch(url, { ...opts, headers: { Authorization: `Bearer ${driveToken}`, ...(opts.headers || {}) } });
+  if (!res.ok) {
+    let m = res.statusText;
+    try { m = (await res.json()).error.message || m; } catch { /* abaikan */ }
+    if (res.status === 401) driveToken = null;
+    throw new Error(`Google Drive ${res.status}: ${m}`);
+  }
+  return res.json();
+}
+
+async function driveFolder(name, parent = 'root') {
+  const key = `${parent}/${name}`;
+  if (driveFolders[key]) return driveFolders[key];
+  const q = `name = '${name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and '${parent}' in parents`;
+  const found = await gdrive(`${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`);
+  const id = found.files.length ? found.files[0].id : (await gdrive(`${DRIVE_API}?fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parent] })
+  })).id;
+  driveFolders[key] = id;
+  return id;
+}
+
+function driveFileName(entry, file, i) {
+  const ext = (file.name.match(/\.[A-Za-z0-9]{1,5}$/) || ['.jpg'])[0].toLowerCase();
+  const title = entry.judul.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return `${(entry.jam || '').replace(':', '.')} ${title} (${i + 1})${ext}`.trim();
+}
+
+// Salin foto asli (bukan versi yang diperkecil) ke Laporan Magang/<tanggal>.
+async function copyToDrive(files, entry) {
+  const root = await driveFolder(DRIVE_ROOT);
+  const day = await driveFolder(entry.tanggal, root);
+  let done = 0;
+  await mapLimit(files, UPLOAD_CONCURRENCY, async (file, i) => {
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: driveFileName(entry, file, i), parents: [day] })], { type: 'application/json' }));
+    form.append('file', file);
+    await gdrive('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', body: form });
+    msg('saveMsg', `Menyalin ke Google Drive ${++done}/${files.length}…`);
+  });
+  return root;
+}
+
+function renderDrive() {
+  $('dClientId').value = driveCfg.clientId || '';
+  $('dEnabled').checked = Boolean(driveCfg.enabled);
+  $('driveOrigin').textContent = location.origin;
+  $('driveStatus').textContent = driveReady() ? 'Aktif' : driveCfg.clientId ? 'Nonaktif' : 'Belum diatur';
+  $('driveNote').hidden = !driveReady();
+  if (driveCfg.folderId) {
+    $('driveFolderLink').href = `https://drive.google.com/drive/folders/${encodeURIComponent(driveCfg.folderId)}`;
+    $('driveFolderLink').hidden = false;
+  }
+}
+
+$('formDrive').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const clientId = $('dClientId').value.trim();
+  if (clientId && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
+    return toast('Client ID tidak valid. Harus berakhiran .apps.googleusercontent.com', true);
+  }
+  if (clientId !== driveCfg.clientId) { driveToken = null; delete driveCfg.folderId; }
+  driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && Boolean(clientId) };
+  try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
+  renderDrive();
+  if (driveCfg.clientId) loadGis().catch(e => toast(e.message, true));
+  toast(driveReady() ? 'Google Drive aktif. Klik "Hubungkan & tes" untuk login.' : 'Pengaturan Google Drive disimpan.');
+});
+
+$('btnDriveTest').addEventListener('click', async ev => {
+  if (!driveCfg.clientId) return toast('Isi dan simpan Client ID terlebih dahulu.', true);
+  const tokenPromise = ensureDriveToken();
+  await withBusy(ev.currentTarget, async () => {
+    await tokenPromise;
+    const id = await driveFolder(DRIVE_ROOT);
+    driveCfg.folderId = id;
+    try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
+    renderDrive();
+    toast('✅ Terhubung ke Google Drive. Folder "Laporan Magang" siap.');
+  });
+});
 
 // ================= Utilitas UI =================
 function msg(id, text) { $(id).textContent = text; }

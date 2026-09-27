@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=6">
+  <link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -72,20 +72,20 @@
   <div class="tabbar">
     <div class="container tabbar-inner" role="tablist">
       <button class="tabbar-item active" type="button" role="tab" data-view="harian">
-        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Kegiatan Harian
+        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> <span class="lbl-long">Kegiatan Harian</span><span class="lbl-short">Harian</span>
       </button>
       <button class="tabbar-item" type="button" role="tab" data-view="galeri">
-        <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Galeri Foto
+        <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> <span class="lbl-long">Galeri Foto</span><span class="lbl-short">Galeri</span>
       </button>
       <button class="tabbar-item" type="button" role="tab" data-view="rekap">
-        <svg class="ic" aria-hidden="true"><use href="#i-history"/></svg> Rekap Mingguan
+        <svg class="ic" aria-hidden="true"><use href="#i-history"/></svg> <span class="lbl-long">Rekap Mingguan</span><span class="lbl-short">Rekap</span>
       </button>
     </div>
   </div>
 
   <main class="container page">
     <div class="banner">
-      <span class="banner-icon"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+      <span class="banner-icon"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></span>
       <div>
         <strong id="bannerTitle">Dokumentasi Kegiatan Magang</strong>
         <span id="bannerText"></span>
@@ -101,7 +101,7 @@
           </label>
           <label class="field">
             <span>Tanggal</span>
-            <input type="date" id="filterTanggal">
+            <select id="filterTanggal"><option value="">Semua tanggal</option></select>
           </label>
           <label class="field grow">
             <span>Cari kegiatan</span>
@@ -126,6 +126,7 @@
                 <span id="orgRole"></span>
               </div>
             </div>
+            <p class="org-program" id="orgProgram" hidden></p>
             <div id="mentorBox" hidden>
               <div class="side-label">Mentor Pembimbing</div>
               <div class="org">
@@ -175,7 +176,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=6"></script>
-  <script src="assets/app.js?v=6"></script>
+  <script src="assets/common.js?v=7"></script>
+  <script src="assets/app.js?v=7"></script>
 </body>
 </html>

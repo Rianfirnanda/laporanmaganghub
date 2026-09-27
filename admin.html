@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=6">
+  <link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -146,6 +146,7 @@
                 <small>Bisa banyak foto sekaligus. Otomatis diperkecil (maks. 1600px).</small>
               </label>
               <div class="previews" id="previews"></div>
+              <p class="drive-note" id="driveNote" hidden><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Foto asli juga disalin ke Google Drive › <b>Laporan Magang</b></p>
             </div>
             <div class="actions">
               <button class="btn btn-primary" type="submit" id="btnSave">Simpan kegiatan</button>
@@ -296,6 +297,7 @@
       <!-- ---------- Tab Keamanan ---------- -->
       <div class="panel" data-panel="keamanan" hidden>
         <div class="admin-layout">
+          <div class="stack">
           <section class="card">
             <div class="card-header">
               <span class="head-icon green"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg></span>
@@ -303,6 +305,38 @@
             </div>
             <div class="card-body"><dl class="kv kv-wide" id="secInfo"></dl></div>
           </section>
+
+          <section class="card">
+            <div class="card-header">
+              <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg></span>
+              <div class="head-text"><h3>Salinan ke Google Drive</h3><span id="driveStatus">Belum diatur</span></div>
+            </div>
+            <form id="formDrive" class="form card-body" autocomplete="off">
+              <p class="note">Foto asli setiap kegiatan ikut disimpan ke Google Drive Anda, di folder <b>Laporan Magang/tanggal</b>. Panel hanya bisa mengakses file yang dibuatnya sendiri, bukan seluruh isi Drive.</p>
+              <label class="field"><span>Google OAuth Client ID</span><input id="dClientId" spellcheck="false" placeholder="123456789-xxxx.apps.googleusercontent.com"></label>
+              <label class="switch-row">
+                <input type="checkbox" id="dEnabled">
+                <span class="switch" aria-hidden="true"></span>
+                <span>Salin foto ke Google Drive setiap menyimpan kegiatan</span>
+              </label>
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Simpan</button>
+                <button class="btn btn-outline" type="button" id="btnDriveTest">Hubungkan &amp; tes</button>
+                <a class="btn btn-link" id="driveFolderLink" target="_blank" rel="noopener" hidden>Buka folder Drive ↗</a>
+              </div>
+              <details class="help">
+                <summary>Cara mendapatkan Client ID (sekali saja, ±15 menit)</summary>
+                <ol>
+                  <li>Buka <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a>, buat project baru, misalnya <i>laporan-magang</i>.</li>
+                  <li>Menu <b>APIs &amp; Services → Library</b>: cari <b>Google Drive API</b>, klik <b>Enable</b>.</li>
+                  <li>Menu <b>Google Auth Platform</b> (atau <b>OAuth consent screen</b>): isi nama aplikasi dan email Anda, pilih <b>External</b>. Di bagian <b>Audience / Test users</b>, tambahkan email Google Anda sendiri.</li>
+                  <li>Menu <b>Clients</b> (atau <b>Credentials → Create credentials → OAuth client ID</b>): pilih <b>Web application</b>. Di <b>Authorized JavaScript origins</b> isi <code id="driveOrigin"></code>. Klik <b>Create</b>.</li>
+                  <li>Salin <b>Client ID</b> (berakhiran <code>.apps.googleusercontent.com</code>) ke kolom di atas, lalu klik <b>Simpan</b> dan <b>Hubungkan &amp; tes</b>.</li>
+                </ol>
+              </details>
+            </form>
+          </section>
+          </div>
 
           <div class="stack">
             <section class="card">
@@ -367,7 +401,7 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=6"></script>
-  <script src="assets/admin.js?v=6"></script>
+  <script src="assets/common.js?v=7"></script>
+  <script src="assets/admin.js?v=7"></script>
 </body>
 </html>
