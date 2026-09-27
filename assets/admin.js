@@ -381,6 +381,7 @@ async function enterApp() {
   show('app');
   renderSecurity();
   renderDrive();
+  if (driveCfg.clientId) loadDriveToken();   // izin Google dari sesi sebelumnya (±1 jam)
   if (driveReady()) loadGis().catch(() => {});
   resetForm();
   renderAi();
@@ -415,7 +416,7 @@ function lock(reason) {
   AI_KEY = '';
   GROQ_KEY = '';
   harian = {};
-  driveToken = null;
+  clearDriveToken();
   entries = [];
   CFG = null;
   $('entryList').innerHTML = '<p class="empty">Memuat…</p>';
@@ -1830,6 +1831,43 @@ function loadGis() {
   return gisLoading;
 }
 
+// Token Google (berlaku ±1 jam) disimpan terenkripsi dengan kunci perangkat,
+// sehingga tidak perlu login ulang setiap halaman dimuat ulang. Google tidak
+// memberi token jangka panjang untuk aplikasi tanpa server; setelah habis,
+// panel meminta token baru tanpa memilih akun lagi (jendela menutup sendiri).
+const DRIVE_TOKEN_KEY = 'laporanmagang.drivetoken';
+
+async function saveDriveToken() {
+  try {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const body = te.encode(JSON.stringify({ t: driveToken, exp: driveTokenExp, cid: driveCfg.clientId }));
+    const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deviceKey(), body));
+    localStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify({ iv: toB64(iv), data: toB64(data) }));
+  } catch { /* tanpa penyimpanan: cukup di memori */ }
+}
+
+async function loadDriveToken() {
+  try {
+    const raw = localStorage.getItem(DRIVE_TOKEN_KEY);
+    if (!raw) return;
+    const { iv, data } = JSON.parse(raw);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, await deviceKey(), fromB64(data));
+    const tok = JSON.parse(td.decode(plain));
+    if (tok.cid === driveCfg.clientId && tok.exp > Date.now() + 60000) {
+      driveToken = tok.t;
+      driveTokenExp = tok.exp;
+    } else {
+      clearDriveToken();
+    }
+  } catch { clearDriveToken(); }
+}
+
+function clearDriveToken() {
+  driveToken = null;
+  driveTokenExp = 0;
+  try { localStorage.removeItem(DRIVE_TOKEN_KEY); } catch { /* abaikan */ }
+}
+
 // Dipanggil sinkron dari event klik; jendela login hanya muncul bila token habis.
 function ensureDriveToken() {
   if (driveToken && Date.now() < driveTokenExp - 60000) return Promise.resolve(driveToken);
@@ -1841,18 +1879,34 @@ function ensureDriveToken() {
     const client = google.accounts.oauth2.initTokenClient({
       client_id: driveCfg.clientId,
       scope: DRIVE_SCOPE,
+      // Akun yang pernah dipakai: langsung dipilih tanpa layar pilih akun/izin.
+      ...(driveCfg.email ? { login_hint: driveCfg.email, hint: driveCfg.email, prompt: '' } : {}),
       callback: r => {
         if (r.error) return reject(new Error(`Google menolak: ${r.error}`));
         driveToken = r.access_token;
         driveTokenExp = Date.now() + Number(r.expires_in || 3600) * 1000;
+        saveDriveToken();
+        if (!driveCfg.email) rememberDriveAccount();
         resolve(driveToken);
       },
       error_callback: e => reject(new Error(e && e.type === 'popup_closed' ? 'Jendela login Google ditutup.'
         : e && e.type === 'popup_failed_to_open' ? 'Jendela login Google diblokir browser. Izinkan pop-up untuk situs ini.'
         : `Login Google gagal (${(e && e.type) || 'tidak diketahui'}).`))
     });
-    client.requestAccessToken();
+    client.requestAccessToken(driveCfg.email ? { prompt: '', login_hint: driveCfg.email } : {});
   });
+}
+
+// Simpan alamat akun Google (hanya di perangkat ini) sebagai petunjuk login berikutnya.
+async function rememberDriveAccount() {
+  try {
+    const about = await gdrive('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)');
+    const email = about.user && about.user.emailAddress;
+    if (email) {
+      driveCfg = { ...driveCfg, email };
+      localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg));
+    }
+  } catch { /* tidak wajib */ }
 }
 
 async function gdrive(url, opts = {}) {
@@ -1860,7 +1914,7 @@ async function gdrive(url, opts = {}) {
   if (!res.ok) {
     let m = res.statusText;
     try { m = (await res.json()).error.message || m; } catch { /* abaikan */ }
-    if (res.status === 401) driveToken = null;
+    if (res.status === 401) clearDriveToken();
     throw new Error(`Google Drive ${res.status}: ${m}`);
   }
   return res.json();
@@ -2166,7 +2220,7 @@ function adoptSharedDrive() {
   const shared = CFG && CFG.drive && CFG.drive.clientId;
   if (!shared || shared === driveCfg.clientId) return;
   const first = !driveCfg.clientId;
-  driveToken = null;
+  clearDriveToken();
   driveCfg = { clientId: shared, enabled: first ? CFG.drive.aktif !== false : Boolean(driveCfg.enabled) };
   try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
   renderDrive();
@@ -2180,7 +2234,7 @@ $('formDrive').addEventListener('submit', async ev => {
     return toast('Client ID tidak valid. Harus berakhiran .apps.googleusercontent.com', true);
   }
   await withBusy(ev.submitter, async () => {
-    if (clientId !== driveCfg.clientId) { driveToken = null; delete driveCfg.folderId; }
+    if (clientId !== driveCfg.clientId) { clearDriveToken(); delete driveCfg.folderId; delete driveCfg.email; }
     driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && Boolean(clientId) };
     try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
     renderDrive();
