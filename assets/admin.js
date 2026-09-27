@@ -1985,6 +1985,21 @@ $('btnDriveTest').addEventListener('click', async ev => {
   });
 });
 
+// Dipakai common.js: jangan muat ulang otomatis bila ada pekerjaan yang belum disimpan.
+function adaIsianBelumDisimpan() {
+  if (busy > 0 || newPhotos.length || editingId) return true;
+  return ['fJudul', 'fKet', 'hRingkasan', 'hPembelajaran', 'hKendala', 'aiKey', 'groqKey'].some(id => {
+    const el = $(id);
+    return el && el.value.trim() && el.value !== el.defaultValue && !(id.startsWith('h') && harianTersimpan(id));
+  });
+}
+
+function harianTersimpan(id) {
+  const rec = harian[$('hTanggal').value] || {};
+  const key = { hRingkasan: 'ringkasan', hPembelajaran: 'pembelajaran', hKendala: 'kendala' }[id];
+  return (rec[key] || '') === $(id).value;
+}
+
 // ================= Utilitas UI =================
 function msg(id, text) { $(id).textContent = text; }
 
