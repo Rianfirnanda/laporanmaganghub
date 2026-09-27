@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=9">
+  <link rel="stylesheet" href="assets/style.css?v=10">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -223,7 +223,7 @@
             </div>
             <form id="formAi" class="form card-body" autocomplete="off">
               <p class="note">Laporan ditulis oleh Google Gemini (gratis) dari catatan kegiatan hari itu. Kunci API disimpan terenkripsi dengan kata sandi panel. Catatan kegiatan hari itu dikirim ke Google saat tombol <b>Buat dengan AI</b> ditekan; pada layanan gratis, Google dapat memakai data itu untuk meningkatkan produknya.</p>
-              <label class="field"><span>Kunci API Gemini</span><input id="aiKey" type="password" spellcheck="false" placeholder="AIza…"></label>
+              <label class="field"><span>Kunci API Gemini</span><input id="aiKey" type="password" spellcheck="false" placeholder="Tempel kunci dari AI Studio, mis. AIzaSy…"></label>
               <label class="field"><span>Kata sandi panel (untuk mengenkripsi kunci)</span><input id="aiPass" type="password" autocomplete="current-password"></label>
               <label class="field" id="aiModelWrap" hidden><span>Model</span><select id="aiModel"></select></label>
               <div class="actions">
@@ -235,7 +235,7 @@
                 <ol>
                   <li>Buka <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> dan masuk dengan akun Google.</li>
                   <li>Klik <b>Create API key</b>. Bila diminta memilih project, pilih project Google Cloud yang sudah ada (misalnya yang dipakai untuk Google Drive) atau buat baru.</li>
-                  <li>Salin kuncinya (diawali <code>AIza</code>). Tidak perlu kartu kredit atau billing.</li>
+                  <li>Klik ikon salin di samping kunci (biasanya diawali <code>AIza</code>, sekitar 39 karakter). Tidak perlu kartu kredit atau billing.</li>
                   <li>Tempel di kolom di atas, isi kata sandi panel, lalu klik <b>Simpan kunci</b>. Panel otomatis memilih model Gemini Flash terbaru.</li>
                 </ol>
               </details>
@@ -483,7 +483,7 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=9"></script>
-  <script src="assets/admin.js?v=9"></script>
+  <script src="assets/common.js?v=10"></script>
+  <script src="assets/admin.js?v=10"></script>
 </body>
 </html>
