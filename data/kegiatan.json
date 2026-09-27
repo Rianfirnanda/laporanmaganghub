@@ -1,5 +1,17 @@
 [
   {
+    "id": "20260922-mujho9y7",
+    "tanggal": "2026-09-22",
+    "jam": "10:06",
+    "sesi": "Pagi",
+    "judul": "melanjutkan pengembangan website",
+    "lokasi": "BPS kab. Bengkulu tengah",
+    "keterangan": "Pada hari ini saya melanjutkan pengembangan website monitoring kegiatan magang di lintas-benteng.web.app, khususnya pada halaman activities-dashboard. Aktivitas yang dikerjakan meliputi penambahan fitur dashboard, pembuatan visualisasi data dalam bentuk grafik untuk memudahkan pemantauan kegiatan, penambahan dan pengelolaan data ke Firestore, perbaikan tampilan antarmuka agar lebih rapi dan mudah digunakan, serta penyempurnaan fitur manajemen kegiatan pada sistem.\n\nDari kegiatan ini saya memperoleh pembelajaran mengenai cara mengintegrasikan visualisasi data grafik ke dalam dashboard web dengan memanfaatkan data yang tersimpan di Firestore secara real-time. Saya juga belajar mengenai praktik pengelolaan struktur data pada Firestore, teknik perbaikan tampilan antarmuka agar lebih responsif, serta cara merancang fitur manajemen kegiatan yang lebih efisien dan mudah digunakan oleh pengguna.\nKendala yang dialami antara lain proses penyesuaian tampilan visualisasi grafik agar data dari Firestore dapat ditampilkan secara akurat dan real-time, serta waktu yang dibutuhkan untuk memastikan tampilan dashboard tetap konsisten dan rapi di berbagai ukuran layar saat perbaikan fitur manajemen kegiatan dilakukan.",
+    "foto": [
+      "uploads/2026/09/22/20260922-mujho9y7-mujho9y70.jpg"
+    ]
+  },
+  {
     "id": "20260921-mujhkq1i",
     "tanggal": "2026-09-21",
     "jam": "09:00",
