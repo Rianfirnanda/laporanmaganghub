@@ -49,7 +49,7 @@ Untuk pemeriksaan mingguan, kirim tautan dengan filter minggu, misalnya
 ## Jika tampilan berantakan setelah pembaruan
 
 GitHub Pages menyimpan cache file CSS/JS di browser sekitar 10 menit. Setiap file CSS/JS dimuat dengan
-penanda versi (`style.css?v=3`), jadi browser otomatis mengambil versi baru. Kalau tampilan masih aneh,
+penanda versi (`style.css?v=4`), jadi browser otomatis mengambil versi baru. Kalau tampilan masih aneh,
 tekan **Ctrl + F5** (atau **Cmd + Shift + R** di Mac) sekali untuk memuat ulang tanpa cache.
 
 Untuk pengembang: setiap kali mengubah file di `assets/`, naikkan angka `?v=` di `index.html` dan `admin.html`.

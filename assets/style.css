@@ -415,6 +415,17 @@ input[type="file"] { min-height: 0; }
 }
 .save-bar .progress-msg { margin-right: auto; }
 
+.deploy-status {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none;
+  font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; border: 1px solid;
+}
+.deploy-status .ic { width: 16px; height: 16px; }
+.deploy-status.pending { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.deploy-status.done { background: var(--green-soft); color: var(--green-ink); border-color: var(--green-line); }
+.deploy-status.slow { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70;
   background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px;
@@ -488,6 +499,7 @@ input[type="file"] { min-height: 0; }
   .save-bar .progress-msg { width: 100%; }
   .save-bar .btn { flex: 1; }
   .lb-nav { top: auto; bottom: 20px; transform: none; }
+  .deploy-status { position: fixed; top: calc(var(--nav-h) + 60px); left: 50%; transform: translateX(-50%); z-index: 45; box-shadow: var(--shadow-lg); }
 }
 
 /* =========================================================
