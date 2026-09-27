@@ -147,6 +147,7 @@ a { color: var(--accent-ink); }
 .progress-text { text-align: right; display: flex; flex-direction: column; gap: 2px; }
 .progress-label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .progress-sub { font-size: 15px; font-weight: 600; }
+.progress-work { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
 .ring { width: 76px; height: 76px; transform: rotate(-90deg); flex: none; border-radius: 50%; box-shadow: var(--raised-sm); padding: 4px; }
 .ring circle { fill: none; stroke-width: 5; }
 .ring-bg { stroke: color-mix(in srgb, var(--ink) 10%, transparent); }
