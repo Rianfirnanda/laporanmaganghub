@@ -27,13 +27,13 @@ jobs:
         if: github.event_name == 'push'
         run: sleep 75
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Tulis laporan harian yang belum ada/berubah
         env:

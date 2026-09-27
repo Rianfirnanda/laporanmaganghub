@@ -28,6 +28,7 @@ async function init() {
   }
   ENTRIES = (Array.isArray(ENTRIES) ? ENTRIES : []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
   if (!HARIAN || typeof HARIAN !== 'object' || Array.isArray(HARIAN)) HARIAN = {};
+  aturHariLibur(CONFIG.hariLibur);
   applyTheme(CONFIG.warnaTema);
   const ikon = safePath(CONFIG.ikonSitus);
   if (ikon) $('favicon').href = ikon;
@@ -96,6 +97,16 @@ function stats(days) {
     kegiatan: days.reduce((n, d) => n + d.items.length, 0),
     foto: days.reduce((n, d) => n + d.items.reduce((m, e) => m + (e.foto || []).filter(safePath).length, 0), 0)
   };
+}
+
+// Libur nasional/cuti bersama pada hari kerja minggu ini (tidak dihitung).
+function liburNote() {
+  const { start, end } = rentangMinggu(CONFIG, WEEK);
+  const a = toDateStr(start), b = toDateStr(end);
+  const list = [...HARI_LIBUR].filter(([d]) => d >= a && d <= b && !isAkhirPekan(d)).sort(([x], [y]) => x.localeCompare(y));
+  return list.length
+    ? `<p class="doc-libur">Hari libur minggu ini (tidak dihitung sebagai hari kerja): ${list.map(([d, h]) => `${esc(formatTanggal(d))} – ${esc(h.nama)}`).join('; ')}.</p>`
+    : '';
 }
 
 function para(text) {
@@ -181,6 +192,7 @@ function renderDokumen(days, range) {
       ${s.sakit ? `<li><b>${s.sakit}</b> hari sakit</li>` : ''}
       ${s.izin ? `<li><b>${s.izin}</b> hari izin</li>` : ''}
     </ul>
+    ${liburNote()}
 
     <h2>B. Rincian kegiatan harian</h2>
     ${dayHtml}

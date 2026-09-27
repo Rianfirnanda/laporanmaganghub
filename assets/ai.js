@@ -95,13 +95,14 @@ function aiSenin(date) {
 function aiMingguKe(mulai, date) {
   return Math.round((aiSenin(date) - aiSenin(mulai)) / (7 * 86400000)) + 1;
 }
-function aiHariKerja(date) {
+// Senin–Jumat dan bukan libur nasional/cuti bersama (config.hariLibur).
+function aiHariKerja(date, libur = []) {
   const d = new Date(aiUtc(date)).getUTCDay();
-  return d >= 1 && d <= 5;
+  return d >= 1 && d <= 5 && !(Array.isArray(libur) && libur.some(h => h && h.tanggal === date));
 }
 
 function buildSummaryPrompt({ config = {}, entries = [], harian = {} }) {
-  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].filter(d => d && aiHariKerja(d)).sort();
+  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].filter(d => d && aiHariKerja(d, config.hariLibur)).sort();
   if (!dates.length) return null;
   const mulai = config.tanggalMulai || dates[0];
   const lastWeek = aiMingguKe(mulai, dates[dates.length - 1]);
@@ -133,9 +134,9 @@ function sumberHarian(entries, date) {
 }
 
 // Laporan perlu (ditulis ulang) oleh AI? Tidak pernah menimpa hasil edit manual.
-function perluLaporanAi(entries, harian, date) {
+function perluLaporanAi(entries, harian, date, libur = []) {
   const rec = harian[date];
-  if (!aiHariKerja(date)) return false;   // monev hanya Senin–Jumat
+  if (!aiHariKerja(date, libur)) return false;   // monev hanya hari kerja
   if (!aiDayEntries(entries, date).length) return false;
   if (!rec || !(rec.ringkasan || rec.pembelajaran || rec.kendala)) return true;
   if (rec.auto === false || ['Sakit', 'Izin'].includes(rec.status)) return false;
