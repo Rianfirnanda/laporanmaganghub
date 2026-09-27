@@ -24,6 +24,7 @@ async function init() {
   renderBanner();
   renderFooter();
   fillWeekFilter();
+  fillDateFilter();
   bindUI();
   setView(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'harian', false);
 }
@@ -85,8 +86,8 @@ function renderBanner() {
   }
   $('bannerTitle').textContent = title;
   $('bannerText').textContent = latest
-    ? `Terakhir diperbarui ${formatTanggal(latest)}. ${CONFIG.program || ''}`
-    : (CONFIG.program || 'Dokumentasi kegiatan harian selama program magang.');
+    ? `Kegiatan terakhir: ${formatTanggal(latest)}`
+    : 'Belum ada kegiatan yang didokumentasikan.';
 }
 
 function renderSidebar() {
@@ -102,6 +103,8 @@ function renderSidebar() {
   }
   $('orgName').textContent = CONFIG.instansi || '';
   $('orgRole').textContent = CONFIG.posisi || '';
+  $('orgProgram').textContent = CONFIG.program || '';
+  $('orgProgram').hidden = !CONFIG.program;
   const m = CONFIG.mentor || {};
   $('mentorBox').hidden = !m.nama;
   $('mentorLogo').textContent = inisial(m.nama);
@@ -183,10 +186,25 @@ function fillWeekFilter() {
   if (params.get('minggu')) $('filterMinggu').value = params.get('minggu');
 }
 
+// Pilihan tanggal hanya berisi hari yang punya kegiatan (dan ikut filter minggu).
+// Dipakai sebagai pengganti input tanggal bawaan yang tampil kosong di HP.
+function fillDateFilter() {
+  const w = $('filterMinggu').value;
+  const current = $('filterTanggal').value;
+  const dates = [...new Set(ENTRIES.filter(e => !w || mingguKe(CONFIG, e.tanggal) === Number(w)).map(e => e.tanggal))].sort().reverse();
+  $('filterTanggal').innerHTML = '<option value="">Semua tanggal</option>' + dates.map(d => {
+    const dt = parseDate(d);
+    return `<option value="${d}">${HARI[dt.getDay()]}, ${formatPendek(dt)}</option>`;
+  }).join('');
+  $('filterTanggal').value = dates.includes(current) ? current : '';
+}
+
 function bindUI() {
-  ['filterMinggu', 'filterTanggal', 'filterCari'].forEach(id => $(id).addEventListener('input', render));
+  $('filterMinggu').addEventListener('input', () => { fillDateFilter(); render(); });
+  ['filterTanggal', 'filterCari'].forEach(id => $(id).addEventListener('input', render));
   $('btnReset').addEventListener('click', () => {
     $('filterMinggu').value = '';
+    fillDateFilter();
     $('filterTanggal').value = '';
     $('filterCari').value = '';
     render();
@@ -198,6 +216,7 @@ function bindUI() {
     const wk = ev.target.closest('[data-week]');
     if (wk) {
       $('filterMinggu').value = wk.dataset.week;
+      fillDateFilter();
       $('filterTanggal').value = '';
       if (wk.dataset.action === 'print') { setView('harian'); printReport(); } else setView('harian');
     }
