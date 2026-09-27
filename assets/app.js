@@ -216,7 +216,6 @@ function bindUI() {
     $('filterCari').value = '';
     render();
   });
-  document.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', printReport));
   document.addEventListener('click', ev => {
     const v = ev.target.closest('[data-view]');
     if (v) { ev.preventDefault(); setView(v.dataset.view); closeMenu(); }
@@ -225,7 +224,7 @@ function bindUI() {
       $('filterMinggu').value = wk.dataset.week;
       fillDateFilter();
       $('filterTanggal').value = '';
-      if (wk.dataset.action === 'print') { setView('harian'); printReport(); } else setView('harian');
+      setView('harian');
     }
     if (ev.target.closest('.nav-menu a[href="#tentang"]')) closeMenu();
   });
@@ -259,11 +258,6 @@ function setView(v, scroll = true) {
   }
 }
 
-function printReport() {
-  closeMenu();
-  if (view !== 'harian') setView('harian', false);
-  setTimeout(() => window.print(), 50);
-}
 
 function statusOf(date) {
   const st = HARIAN[date] && HARIAN[date].status;
@@ -303,6 +297,11 @@ function render() {
   $('filterMinggu').value ? url.searchParams.set('minggu', $('filterMinggu').value) : url.searchParams.delete('minggu');
   url.hash = view === 'harian' ? '' : view;
   history.replaceState(null, '', url);
+
+  const week = $('filterMinggu').value;
+  document.querySelectorAll('[data-laporan]').forEach(a => {
+    a.href = `laporan.html?mode=${a.dataset.laporan}${week ? `&minggu=${week}` : ''}`;
+  });
 
   const list = sortEntries(filtered());
   lbPhotos = [];
@@ -433,7 +432,8 @@ function renderRekap(list) {
         </li>`).join('')}</ul>
         <div class="actions">
           <button class="btn btn-primary btn-sm" type="button" data-week="${w}">${icon('eye')} Lihat detail</button>
-          <button class="btn btn-outline btn-sm" type="button" data-week="${w}" data-action="print">${icon('printer')} Cetak minggu ini</button>
+          <a class="btn btn-outline btn-sm" href="laporan.html?minggu=${w}&amp;mode=dokumen">${icon('file')} Laporan mingguan</a>
+          <a class="btn btn-outline btn-sm" href="laporan.html?minggu=${w}&amp;mode=slide">${icon('image')} Slide mingguan</a>
         </div>
       </div>
     </article>`;

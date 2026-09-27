@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=10">
+  <link rel="stylesheet" href="assets/style.css?v=11">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -27,14 +27,20 @@
         <a href="#galeri" data-view="galeri">Galeri</a>
         <a href="#rekap" data-view="rekap">Rekap Mingguan</a>
         <a href="#tentang">Tentang</a>
-        <button class="btn btn-outline nav-print" type="button" data-print>
-          <svg class="ic" aria-hidden="true"><use href="#i-printer"/></svg> Cetak Laporan
-        </button>
+        <a class="btn btn-outline nav-print" href="laporan.html?mode=dokumen" data-laporan="dokumen">
+          <svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> Laporan Mingguan
+        </a>
+        <a class="btn btn-outline nav-print" href="laporan.html?mode=slide" data-laporan="slide">
+          <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Slide Mingguan
+        </a>
       </div>
       <div class="nav-right">
-        <button class="btn btn-outline btn-print-desktop" type="button" data-print>
-          Cetak Laporan <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </button>
+        <a class="btn btn-outline btn-print-desktop" href="laporan.html?mode=dokumen" data-laporan="dokumen">
+          <svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> Laporan
+        </a>
+        <a class="btn btn-primary btn-print-desktop" href="laporan.html?mode=slide" data-laporan="slide">
+          <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Slide
+        </a>
         <span class="nav-avatar" id="navAvatar"></span>
         <button class="nav-toggle" id="navToggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="navMenu">
           <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
@@ -187,7 +193,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=10"></script>
-  <script src="assets/app.js?v=10"></script>
+  <script src="assets/common.js?v=11"></script>
+  <script src="assets/app.js?v=11"></script>
 </body>
 </html>
