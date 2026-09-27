@@ -65,6 +65,9 @@
       "lat": -3.776041,
       "lng": 102.319259,
       "akurasi": 51
+    },
+    "fotoDrive": {
+      "uploads/2026/09/24/20260924-muji05j9-muji05j90.jpg": "1wzU8KfVPa00PmxaX_VMMotiXeZa4tgKh"
     }
   },
   {
@@ -84,6 +87,11 @@
       "lat": -3.776041,
       "lng": 102.319259,
       "akurasi": 51
+    },
+    "fotoDrive": {
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j10.jpg": "1LK4_vjgj0ApGP5GJ26berAOMuz5mwglf",
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j11.jpg": "1NDsYrCJNW7GXxWYUlRx8SiCWGI7q5RHd",
+      "uploads/2026/09/23/20260923-mujht5j1-mujht5j12.jpg": "1H06Xr5nY8npQ-cJndVimAuLlfTJwmAJB"
     }
   },
   {
@@ -101,6 +109,9 @@
       "lat": -3.776041,
       "lng": 102.319259,
       "akurasi": 51
+    },
+    "fotoDrive": {
+      "uploads/2026/09/22/20260922-mujho9y7-mujho9y70.jpg": "1YDHeIx5wPnaWUX_ws-Yj9AmjNAPGyYbi"
     }
   },
   {
@@ -119,6 +130,10 @@
       "lat": -3.776041,
       "lng": 102.319259,
       "akurasi": 51
+    },
+    "fotoDrive": {
+      "uploads/2026/09/21/20260921-mujhkq1i-mujhkq1i0.jpg": "1MTA0_3A3J8mNGQHScZ1MHsWUgPjMa4aH",
+      "uploads/2026/09/21/20260921-mujhkq1i-mujhkq1i1.jpg": "1d20fmNvTNp9J_Aq9ghw702vXC4yqm1wU"
     }
   }
 ]
