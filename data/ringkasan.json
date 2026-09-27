@@ -1,14 +1,15 @@
 {
-  "diperbarui": "2026-09-27T17:24:49.604Z",
-  "minggu": 1,
-  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Ia kemudian mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan bug pada sistem. Selain itu, Rian ikut sosialisasi SSO, menyiapkan atribut lomba Hari Statistik Nasional, dan membantu operasional acara.",
+  "diperbarui": "2026-09-27T22:46:22.220Z",
+  "minggu": 2,
+  "mingguIni": "Pada minggu kedua, Rian melakukan tes terkait pengembangan yang sedang dikerjakan. Kegiatan ini menjadi langkah akhir sebelum melanjutkan tugas selanjutnya.",
   "sorotan": [
-    "Pengembangan dashboard interaktif",
-    "Perbaikan bug login dan data",
-    "Persiapan lomba HSN"
+    "Tes sistem",
+    "Evaluasi fitur",
+    "Persiapan lanjutan"
   ],
-  "keseluruhan": "Rian menunjukkan inisiatif kuat dalam menguasai teknologi dan memperbaiki sistem sejak awal magang. Selama minggu pertama, ia berhasil menggabungkan tugas teknis dengan kontribusi pada kegiatan kantor, menandakan progres yang konsisten.",
+  "keseluruhan": "Rian telah melewati fase perkenalan, pengembangan website, dan persiapan acara statistik nasional. Selama dua minggu pertama, ia menunjukkan konsistensi dalam belajar dan berkontribusi pada proyek BPS Kabupaten Bengkulu Tengah.",
   "mingguan": {
-    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Ia kemudian mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan bug pada sistem. Selain itu, Rian ikut sosialisasi SSO, menyiapkan atribut lomba Hari Statistik Nasional, dan membantu operasional acara."
+    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Ia kemudian mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan bug pada sistem. Selain itu, Rian ikut sosialisasi SSO, menyiapkan atribut lomba Hari Statistik Nasional, dan membantu operasional acara.",
+    "2": "Pada minggu kedua, Rian melakukan tes terkait pengembangan yang sedang dikerjakan. Kegiatan ini menjadi langkah akhir sebelum melanjutkan tugas selanjutnya."
   }
 }
