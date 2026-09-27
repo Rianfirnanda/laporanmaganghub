@@ -130,7 +130,7 @@ async function saveSession() {
   try {
     const key = await deviceKey();
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const body = JSON.stringify({ token: TOKEN, ai: AI_KEY, groq: GROQ_KEY, exp: rememberMe ? Date.now() + REMEMBER_DAYS * 86400000 : 0 });
+    const body = JSON.stringify({ token: TOKEN, ai: AI_KEY, groq: GROQ_KEY, skrip: SCRIPT_KEY, exp: rememberMe ? Date.now() + REMEMBER_DAYS * 86400000 : 0 });
     const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(body)));
     const blob = JSON.stringify({ iv: toB64(iv), data: toB64(data) });
     clearSession();
@@ -364,10 +364,13 @@ $('formUnlock').addEventListener('submit', async ev => {
     failCount = 0;
     AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
     GROQ_KEY = stored.groqEnc ? await decryptToken(stored.groqEnc, $('uPass').value).catch(() => '') : '';
+    SCRIPT_KEY = stored.scriptEnc ? await decryptToken(stored.scriptEnc, $('uPass').value).catch(() => '') : '';
+    const unlockPass = $('uPass').value;
     $('uPass').value = '';
     rememberMe = $('uRemember').checked;
     saveSession();
     await enterApp();
+    adoptScriptKey(unlockPass);
   });
 });
 
@@ -415,6 +418,7 @@ function lock(reason) {
   TOKEN = '';
   AI_KEY = '';
   GROQ_KEY = '';
+  SCRIPT_KEY = '';
   harian = {};
   clearDriveToken();
   entries = [];
@@ -883,7 +887,7 @@ $('formEntry').addEventListener('submit', async ev => {
   // Harus dipanggil langsung di dalam klik agar jendela login Google tidak diblokir.
   const driveItems = driveReady() ? newPhotos.filter(p => p.state !== 'gagal') : [];
   const photosForDrive = driveItems.map(p => p.file);
-  const drivePromise = photosForDrive.length ? ensureDriveToken() : null;
+  const drivePromise = photosForDrive.length ? driveAuth() : null;
   if (drivePromise) drivePromise.catch(() => {});
   await withBusy($('btnSave'), async () => {
     const tanggal = $('fTanggal').value;
@@ -1100,6 +1104,8 @@ async function loadConfig() {
     CFG = await readRepoJSON(CONFIG_PATH, S.branch, {});
     aturHariLibur(CFG.hariLibur);
     adoptSharedDrive();
+    renderScript();
+    renderDrive();
     fillConfigForm();
     renderHero(true);
   } catch (e) {
@@ -1326,6 +1332,7 @@ $('formPass').addEventListener('submit', async ev => {
     const next = { ...stored, enc: await encryptToken(token, $('pNew').value) };
     if (stored.aiEnc) next.aiEnc = await encryptToken(await decryptToken(stored.aiEnc, $('pOld').value), $('pNew').value);
     if (stored.groqEnc) next.groqEnc = await encryptToken(await decryptToken(stored.groqEnc, $('pOld').value), $('pNew').value);
+    if (stored.scriptEnc) next.scriptEnc = await encryptToken(await decryptToken(stored.scriptEnc, $('pOld').value), $('pNew').value);
     writeStore(next);
     $('formPass').reset();
     toast('Kata sandi panel diganti.');
@@ -1814,7 +1821,186 @@ function readDriveCfg() {
 }
 
 function driveReady() {
+  if (scriptMode()) return driveCfg.enabled !== false;
   return Boolean(driveCfg.enabled && driveCfg.clientId);
+}
+
+function driveConfigured() {
+  return scriptMode() || Boolean(driveCfg.clientId);
+}
+
+// Izin Drive: Apps Script tidak butuh login; cara lama memakai token Google.
+// Harus dipanggil sinkron di dalam klik (jendela login tidak diblokir).
+function driveAuth() {
+  return scriptMode() ? Promise.resolve() : ensureDriveToken();
+}
+
+// ================= Apps Script (Drive tanpa login) =================
+let SCRIPT_KEY = '';   // kunci rahasia skrip, hanya di memori; tersimpan terenkripsi
+const SCRIPT_PENDING = 'laporanmagang.skrip.baru';
+const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+let scriptTemplate = '';
+let scriptEmail = '';
+
+function scriptUrl() {
+  const shared = CFG && CFG.drive && CFG.drive.skrip && CFG.drive.skrip.url;
+  return SCRIPT_URL_RE.test(shared || '') ? shared : '';
+}
+
+function scriptMode() {
+  return Boolean(scriptUrl() && SCRIPT_KEY);
+}
+
+function newScriptKey() {
+  const b = crypto.getRandomValues(new Uint8Array(24));
+  return toB64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function pendingScriptKey() {
+  try {
+    let k = localStorage.getItem(SCRIPT_PENDING);
+    if (!k) { k = newScriptKey(); localStorage.setItem(SCRIPT_PENDING, k); }
+    return k;
+  } catch { return newScriptKey(); }
+}
+
+async function skrip(aksi, data = {}, { url = scriptUrl(), key = SCRIPT_KEY } = {}) {
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // tanpa preflight CORS
+      body: JSON.stringify({ kunci: key, aksi, ...data }),
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer'
+    });
+  } catch {
+    throw new Error('Apps Script tidak terjangkau. Periksa URL dan koneksi internet.');
+  }
+  let out;
+  try { out = await res.json(); } catch {
+    throw new Error(`Apps Script membalas ${res.status} tanpa data. Pastikan deployment "Aplikasi web" dengan akses "Siapa saja".`);
+  }
+  if (!out || !out.ok) throw new Error(`Apps Script: ${(out && out.error) || 'gagal'}`);
+  return out;
+}
+
+async function loadScriptTemplate() {
+  if (scriptTemplate) return scriptTemplate;
+  const res = await fetch(`apps-script/LaporanMagang.gs?v=${APP_VERSION}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Kode skrip tidak bisa dimuat.');
+  scriptTemplate = await res.text();
+  return scriptTemplate;
+}
+
+function scriptCodeFor(key) {
+  return scriptTemplate.replace('__KUNCI_RAHASIA__', key);
+}
+
+async function renderScript() {
+  const url = scriptUrl();
+  $('scriptStatus').textContent = scriptMode() ? `Aktif${scriptEmail ? ` · ${scriptEmail}` : ''} · tanpa login`
+    : url ? 'Kunci belum ada di perangkat ini' : 'Belum diatur';
+  $('btnScriptForget').hidden = !url;
+  if (document.activeElement !== $('dScriptUrl')) $('dScriptUrl').value = url;
+  if (document.activeElement !== $('dScriptKey')) $('dScriptKey').value = SCRIPT_KEY || pendingScriptKey();
+  $('dScriptPass').value = '';
+  try {
+    await loadScriptTemplate();
+    $('scriptCode').textContent = scriptCodeFor($('dScriptKey').value.trim());
+  } catch (e) { $('scriptCode').textContent = e.message; }
+}
+
+$('dScriptKey').addEventListener('input', () => {
+  if (scriptTemplate) $('scriptCode').textContent = scriptCodeFor($('dScriptKey').value.trim());
+});
+
+$('btnScriptCopy').addEventListener('click', async () => {
+  try {
+    await loadScriptTemplate();
+    const key = $('dScriptKey').value.trim() || pendingScriptKey();
+    await navigator.clipboard.writeText(scriptCodeFor(key));
+    toast('Kode skrip tersalin (kunci rahasia sudah di dalamnya). Tempel di script.google.com.');
+  } catch {
+    $('scriptCode').closest('details').open = true;
+    toast('Salin manual: buka "Lihat kode skrip", tekan lama lalu Pilih semua → Salin.', true);
+  }
+});
+
+$('btnScriptNewKey').addEventListener('click', () => {
+  if (scriptMode() && !confirm('Kunci baru membuat skrip yang sudah terpasang berhenti bekerja sampai kodenya diganti dan di-deploy ulang. Lanjutkan?')) return;
+  const k = newScriptKey();
+  try { localStorage.setItem(SCRIPT_PENDING, k); } catch { /* abaikan */ }
+  $('dScriptKey').value = k;
+  if (scriptTemplate) $('scriptCode').textContent = scriptCodeFor(k);
+  toast('Kunci baru dibuat. Salin kode skrip lalu pasang/perbarui di script.google.com.');
+});
+
+$('formScript').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const url = $('dScriptUrl').value.trim();
+  const key = $('dScriptKey').value.trim();
+  const pass = $('dScriptPass').value;
+  if (!SCRIPT_URL_RE.test(url)) return toast('URL tidak valid. Harus berbentuk https://script.google.com/macros/s/…/exec', true);
+  if (key.length < 20) return toast('Kunci rahasia terlalu pendek. Salin dari perangkat pertama atau buat kunci baru.', true);
+  const stored = readStore();
+  if (!stored) return;
+  await withBusy(ev.submitter, async () => {
+    await decryptToken(stored.enc, pass);   // memastikan kata sandi panel benar
+    msg('scriptMsg', 'Menguji skrip…');
+    const ping = await skrip('ping', {}, { url, key });
+    scriptEmail = ping.email || '';
+    SCRIPT_KEY = key;
+    writeStore({ ...readStore(), scriptEnc: await encryptToken(key, pass) });
+    saveSession();
+    const kunciEnc = await encryptToken(key, pass);
+    let latest;
+    await commit('Atur Google Drive lewat Apps Script', async base => {
+      latest = await readRepoJSON(CONFIG_PATH, base, {});
+      latest.drive = { ...(latest.drive || {}), skrip: { url, kunciEnc } };
+      return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
+    });
+    CFG = { ...CFG, drive: latest.drive };
+    driveCfg = { ...driveCfg, enabled: true };
+    try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); localStorage.removeItem(SCRIPT_PENDING); } catch { /* abaikan */ }
+    renderScript();
+    renderDrive();
+    toast(`✅ Terhubung ke Google Drive${scriptEmail ? ` (${scriptEmail})` : ''} tanpa login. Foto akan tersalin otomatis.`);
+  }, 'scriptMsg');
+});
+
+$('btnScriptForget').addEventListener('click', () => {
+  if (!confirm('Hapus pengaturan Apps Script dari website dan perangkat ini?')) return;
+  withBusy($('btnScriptForget'), async () => {
+    let latest;
+    await commit('Hapus pengaturan Apps Script', async base => {
+      latest = await readRepoJSON(CONFIG_PATH, base, {});
+      if (latest.drive) delete latest.drive.skrip;
+      return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
+    });
+    CFG = { ...CFG, drive: latest.drive };
+    SCRIPT_KEY = '';
+    const st = readStore();
+    if (st) { delete st.scriptEnc; writeStore(st); }
+    saveSession();
+    renderScript();
+    renderDrive();
+    toast('Pengaturan Apps Script dihapus.');
+  });
+});
+
+// Perangkat baru: kunci dibuka dari config.json (terenkripsi kata sandi panel).
+async function adoptScriptKey(pass) {
+  const enc = CFG && CFG.drive && CFG.drive.skrip && CFG.drive.skrip.kunciEnc;
+  if (SCRIPT_KEY || !enc || !pass) return;
+  try {
+    SCRIPT_KEY = await decryptToken(enc, pass);
+    const st = readStore();
+    if (st) writeStore({ ...st, scriptEnc: await encryptToken(SCRIPT_KEY, pass) });
+    saveSession();
+    renderScript();
+    renderDrive();
+  } catch { /* kata sandi berbeda: kunci diisi manual di kartu Apps Script */ }
 }
 
 function loadGis() {
@@ -1941,8 +2127,32 @@ function driveFileName(entry, file, i) {
 }
 
 // Salin foto asli (bukan versi yang diperkecil) ke Laporan Magang/<tanggal>.
+// Lewat Apps Script: foto asli dikirim (base64) dan disimpan skrip ke Drive.
+async function copyViaScript(files, entry, msgId, nums) {
+  let done = 0;
+  let lastErr = null;
+  const ids = await mapLimit(files, 2, async (file, i) => {
+    try {
+      const res = await skrip('unggah', {
+        tanggal: entry.tanggal,
+        nama: driveFileName(entry, file, nums ? nums[i] - 1 : i),
+        mime: file.type || 'image/jpeg',
+        data: await blobToBase64(file)
+      });
+      msg(msgId, `Menyalin ke Google Drive ${++done}/${files.length}…`);
+      return res.id || null;
+    } catch (e) {
+      lastErr = e;
+      return null;
+    }
+  });
+  if (!ids.some(Boolean) && lastErr) throw lastErr;
+  return { ids, error: lastErr };
+}
+
 // Hasil: ID file Drive per foto (null bila foto itu gagal disalin).
 async function copyToDrive(files, entry, msgId = 'saveMsg', nums = null) {
+  if (scriptMode()) return copyViaScript(files, entry, msgId, nums);
   const root = await driveFolder(DRIVE_ROOT);
   const day = await driveFolder(entry.tanggal, root);
   let done = 0;
@@ -2027,7 +2237,10 @@ async function loadStorage(force = false) {
     storageAt = 0;
     $('storageUpdated').textContent = `Gagal memeriksa: ${e.message}`;
   }
-  if (!driveCfg.clientId) {
+  if (scriptMode()) {
+    $('btnStorageDrive').hidden = true;
+    loadDriveStorage().catch(e => { $('stDriveDetail').textContent = e.message; });
+  } else if (!driveCfg.clientId) {
     $('stDriveText').textContent = 'Belum diatur';
     $('stDriveDetail').textContent = 'Atur Google Drive di kartu "Salinan ke Google Drive" untuk melihat kuotanya.';
     $('btnStorageDrive').hidden = true;
@@ -2040,6 +2253,11 @@ async function loadStorage(force = false) {
 
 // Kuota akun Google (Drive + Gmail + Foto) dan ukuran file yang dibuat panel ini.
 async function loadDriveStorage() {
+  if (scriptMode()) {
+    const st = await skrip('statistik');
+    showDriveStorage(Number(st.terpakai || 0), Number(st.batas || 0), Number(st.folderBytes || 0), Number(st.jumlah || 0));
+    return;
+  }
   const about = await gdrive('https://www.googleapis.com/drive/v3/about?fields=storageQuota');
   const q = about.storageQuota || {};
   const used = Number(q.usage || 0), limit = Number(q.limit || 0);
@@ -2049,6 +2267,10 @@ async function loadDriveStorage() {
     (r.files || []).forEach(f => { folderBytes += Number(f.size || 0); count++; });
     page = r.nextPageToken || '';
   } while (page);
+  showDriveStorage(used, limit, folderBytes, count);
+}
+
+function showDriveStorage(used, limit, folderBytes, count) {
   if (limit) {
     setMeter('stDriveBar', used, limit);
     $('stDriveText').textContent = `${formatBytes(used)} dari ${formatBytes(limit)} · ${pctText(used, limit)}`;
@@ -2062,8 +2284,8 @@ async function loadDriveStorage() {
 
 $('btnStorage').addEventListener('click', () => loadStorage(true));
 $('btnStorageDrive').addEventListener('click', ev => {
-  if (!driveCfg.clientId) return toast('Atur Google Drive terlebih dahulu (kartu Google Drive di bawah).', true);
-  const tokenPromise = ensureDriveToken();   // sinkron di dalam klik agar pop-up tidak diblokir
+  if (!driveConfigured()) return toast('Atur Google Drive terlebih dahulu (kartu Google Drive di bawah).', true);
+  const tokenPromise = driveAuth();   // sinkron di dalam klik agar pop-up tidak diblokir
   tokenPromise.catch(() => {});
   withBusy(ev.currentTarget, async () => {
     await tokenPromise;
@@ -2122,7 +2344,7 @@ function unsyncedPhotos() {
 function renderDriveSync() {
   const total = entries.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
   const todo = unsyncedPhotos().length;
-  $('driveSyncBox').hidden = !driveCfg.clientId || !total;
+  $('driveSyncBox').hidden = !driveConfigured() || !total;
   $('driveSyncInfo').textContent = todo
     ? `${total - todo} dari ${total} foto sudah ada di Google Drive. ${todo} foto belum tersinkron.`
     : `Semua ${total} foto sudah tersinkron ke Google Drive.`;
@@ -2142,10 +2364,15 @@ async function fetchPhoto(path) {
 
 // { nomorFoto: idFile } untuk file "<jam> <judul> (n).ext" di Laporan Magang/<tanggal>.
 async function existingDriveFiles(entry) {
-  const root = await driveFolder(DRIVE_ROOT);
-  const day = await driveFolder(entry.tanggal, root);
-  const q = `'${day}' in parents and trashed = false`;
-  const found = await gdrive(`${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=200&spaces=drive`);
+  let found;
+  if (scriptMode()) {
+    found = await skrip('daftar', { tanggal: entry.tanggal });
+  } else {
+    const root = await driveFolder(DRIVE_ROOT);
+    const day = await driveFolder(entry.tanggal, root);
+    const q = `'${day}' in parents and trashed = false`;
+    found = await gdrive(`${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=200&spaces=drive`);
+  }
   const prefix = driveFileName(entry, { name: 'x.jpg' }, 0).replace(/ \(1\)\.jpg$/, '');
   const out = {};
   for (const f of found.files || []) {
@@ -2156,8 +2383,8 @@ async function existingDriveFiles(entry) {
 }
 
 $('btnDriveSync').addEventListener('click', ev => {
-  if (!driveCfg.clientId) return toast('Atur Google Drive terlebih dahulu.', true);
-  const tokenPromise = ensureDriveToken();   // sinkron di dalam klik agar pop-up tidak diblokir
+  if (!driveConfigured()) return toast('Atur Google Drive terlebih dahulu.', true);
+  const tokenPromise = driveAuth();   // sinkron di dalam klik agar pop-up tidak diblokir
   tokenPromise.catch(() => {});
   withBusy(ev.currentTarget, async () => {
     await tokenPromise;
@@ -2203,9 +2430,10 @@ $('btnDriveSync').addEventListener('click', ev => {
 
 function renderDrive() {
   $('dClientId').value = driveCfg.clientId || '';
-  $('dEnabled').checked = Boolean(driveCfg.enabled);
+  $('dEnabled').checked = scriptMode() ? driveCfg.enabled !== false : Boolean(driveCfg.enabled);
   $('driveOrigin').textContent = location.origin;
-  $('driveStatus').textContent = driveReady() ? 'Aktif' : driveCfg.clientId ? 'Nonaktif' : 'Belum diatur';
+  $('driveStatus').textContent = driveReady() ? (scriptMode() ? 'Aktif · lewat Apps Script (tanpa login)' : 'Aktif · login Google')
+    : driveConfigured() ? 'Nonaktif' : 'Belum diatur';
   $('driveNote').hidden = !driveReady();
   renderDriveSync();
   if (driveCfg.folderId) {
@@ -2235,7 +2463,7 @@ $('formDrive').addEventListener('submit', async ev => {
   }
   await withBusy(ev.submitter, async () => {
     if (clientId !== driveCfg.clientId) { clearDriveToken(); delete driveCfg.folderId; delete driveCfg.email; }
-    driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && Boolean(clientId) };
+    driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && (Boolean(clientId) || scriptMode()) };
     try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
     renderDrive();
     if (driveCfg.clientId) loadGis().catch(e => toast(e.message, true));
@@ -2244,13 +2472,17 @@ $('formDrive').addEventListener('submit', async ev => {
       let latest;
       await commit('Perbarui pengaturan Google Drive', async base => {
         latest = await readRepoJSON(CONFIG_PATH, base, {});
-        if (clientId) latest.drive = { clientId }; else delete latest.drive;
+        // Pertahankan pengaturan lain (mis. Apps Script) di bagian drive.
+        const drive = { ...(latest.drive || {}) };
+        if (clientId) drive.clientId = clientId; else delete drive.clientId;
+        if (Object.keys(drive).length) latest.drive = drive; else delete latest.drive;
         return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
       });
       CFG = { ...CFG, drive: latest.drive };
-      if (!clientId) delete CFG.drive;
+      if (!latest.drive) delete CFG.drive;
     }
-    toast(driveReady() ? 'Google Drive aktif di semua perangkat. Klik "Hubungkan & tes" untuk login di perangkat ini.' : 'Pengaturan Google Drive disimpan.');
+    toast(scriptMode() ? 'Pengaturan Google Drive disimpan (memakai Apps Script, tanpa login).'
+      : driveReady() ? 'Google Drive aktif di semua perangkat. Klik "Hubungkan & tes" untuk login di perangkat ini.' : 'Pengaturan Google Drive disimpan.');
   });
 });
 
@@ -2330,6 +2562,7 @@ window.addEventListener('beforeunload', ev => {
       TOKEN = sess.token;
       AI_KEY = sess.ai || '';
       GROQ_KEY = sess.groq || '';
+      SCRIPT_KEY = sess.skrip || '';
       enterApp().catch(e => toast(e.message, true));
     });
   } else if (legacy) {

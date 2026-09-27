@@ -642,3 +642,6 @@ a.lokasi:hover { color: var(--accent-ink); text-decoration: underline; }
 .meter.warn > span { background: var(--amber); }
 .meter.danger > span { background: var(--red); }
 .storage-forecast { margin: 0; padding: 10px 12px; border-radius: 12px; box-shadow: var(--inset-sm); font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+
+.steps-setup { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+.code-box { margin: 10px 0 0; max-height: 320px; overflow: auto; padding: 12px; border-radius: 12px; box-shadow: var(--inset-sm); font-size: 11.5px; line-height: 1.5; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink-2); }
