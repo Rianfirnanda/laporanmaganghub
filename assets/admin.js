@@ -680,6 +680,7 @@ function startEdit(id) {
   gps = e.koordinat && Number.isFinite(e.koordinat.lat) ? { ...e.koordinat } : null;
   $('gpsMsg').textContent = gps ? gpsLabel(gps) : '';
   $('fKet').value = e.keterangan || '';
+  $('fKendala').value = e.kendala || '';
   keptPhotos = (e.foto || []).filter(safePath);
   $('formTitle').textContent = 'Edit kegiatan';
   $('btnCancelEdit').hidden = false;
@@ -966,9 +967,11 @@ $('formEntry').addEventListener('submit', async ev => {
       judul: $('fJudul').value.trim(),
       lokasi: $('fLokasi').value.trim(),
       keterangan: $('fKet').value.trim(),
+      kendala: $('fKendala').value.trim(),
       foto: [...keptPhotos, ...uploaded]
     };
     if (!data.lokasi) delete data.lokasi;
+    if (!data.kendala) delete data.kendala;
     if (gps) data.koordinat = { lat: gps.lat, lng: gps.lng, ...(gps.akurasi ? { akurasi: gps.akurasi } : {}) };
     // Waktu pencatatan dari server (tidak bisa diatur dari jam HP); dipertahankan saat edit.
     const prev = entries.find(x => x.id === id);
@@ -1640,6 +1643,13 @@ $('formHarian').addEventListener('submit', async ev => {
     kendala: $('hKendala').value.trim(),
     diperbarui: new Date().toISOString()
   };
+  // Monev MagangHub menolak kolom kosong atau "-".
+  const kosong = [['ringkasan', 'Ringkasan'], ['pembelajaran', 'Pembelajaran'], ['kendala', 'Kendala']]
+    .filter(([k]) => /^[\s\-–—.]*$/.test(rec[k])).map(([, l]) => l);
+  if (rec.ringkasan && kosong.length && !confirm(`Kolom ${kosong.join(', ')} masih kosong atau hanya "-". Monev MagangHub tidak menerima isian kosong. Tetap simpan?`)) {
+    $(`h${kosong[0]}`).focus();
+    return;
+  }
   // "auto": tulisan AI yang tidak diubah; boleh ditulis ulang otomatis saat kegiatan bertambah.
   const ai = lastAi[date] || (harian[date] && harian[date].auto ? harian[date] : null);
   rec.auto = Boolean(ai && ['ringkasan', 'pembelajaran', 'kendala'].every(k => (ai[k] || '') === rec[k]));
@@ -2694,7 +2704,7 @@ function adaIsianBelumDisimpan() {
   if (busy > 0 || newPhotos.length || editingId) return true;
   if (!$('startCard').hidden && $('mbNama').value.trim()) return true;
   if (typeof rahasiaBaru === 'string' && rahasiaBaru) return true;   // kunci notifikasi belum disalin
-  return ['fJudul', 'fKet', 'hRingkasan', 'hPembelajaran', 'hKendala', 'aiKey', 'groqKey'].some(id => {
+  return ['fJudul', 'fKet', 'fKendala', 'hRingkasan', 'hPembelajaran', 'hKendala', 'aiKey', 'groqKey'].some(id => {
     const el = $(id);
     return el && el.value.trim() && el.value !== el.defaultValue && !(id.startsWith('h') && harianTersimpan(id));
   });
