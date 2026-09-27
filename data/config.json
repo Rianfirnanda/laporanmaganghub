@@ -36,7 +36,14 @@
   "drive": {
     "clientId": "19749227616-7egmua5b0fai2f4md48b3u2fouarpt4r.apps.googleusercontent.com",
     "skrip": {
-      "url": "https://script.google.com/macros/s/AKfycbzrVAa3tsyXtARVCNQ7CvAg8o4XN-Elgbs1mfbe7fNMftBa27G-Z7dVdi6-ZCRq7npCXQ/exec"
+      "url": "https://script.google.com/macros/s/AKfycbzrVAa3tsyXtARVCNQ7CvAg8o4XN-Elgbs1mfbe7fNMftBa27G-Z7dVdi6-ZCRq7npCXQ/exec",
+      "pasang": {
+        "salt": "npGN4bAiFvCbqJotuX0vWA==",
+        "iv": "3vAUzgbdJKJqv8lF",
+        "data": "6UC4jPwtOFFnDAKxWaNec+hSDwsyaSJmQtFQRCtxDDzSCitacOJ+p7rv1SZgJPGB",
+        "iter": 310000,
+        "exp": 1790528275615
+      }
     }
   },
   "hariLibur": [
