@@ -144,6 +144,7 @@ function renderKpis() {
   const hariIni = ENTRIES.filter(e => e.tanggal === today).length;
   const hari = new Set(ENTRIES.map(e => e.tanggal)).size;
   const foto = ENTRIES.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+  const sync = ENTRIES.reduce((n, e) => n + (e.foto || []).filter(safePath).filter(f => inDrive(e, f)).length, 0);
   const kerja = hariKerja(today);
   const sakit = Object.keys(HARIAN).filter(d => statusOf(d) === 'Sakit').length;
   const izin = Object.keys(HARIAN).filter(d => statusOf(d) === 'Izin').length;
@@ -156,7 +157,7 @@ function renderKpis() {
   $('kpis').innerHTML = [
     kpi('grid', ENTRIES.length, 'Kegiatan', hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
     kpi('calendar', hari, 'Hari terdokumentasi', kerja ? `${pct}% dari ${kerja} hari kerja` : 'Belum dimulai'),
-    kpi('image', foto, 'Foto dokumentasi', `${hari ? (foto / hari).toFixed(1).replace('.', ',') : 0} foto per hari`),
+    kpi('image', foto, 'Foto dokumentasi', foto ? `${sync === foto ? 'Semua' : `${sync} dari ${foto}`} di Google Drive` : 'Belum ada foto'),
     kpi('badge', hadir, 'Hari hadir', sakit || izin ? `Sakit ${sakit} · Izin ${izin}` : 'Tanpa sakit/izin')
   ].join('');
 }
@@ -396,8 +397,19 @@ function weekLabel(w) {
   return `${formatPendek(start)} – ${formatPendek(end)} ${end.getFullYear()}`;
 }
 
+function inDrive(e, src) {
+  return Boolean(e.fotoDrive && typeof e.fotoDrive === 'object' && e.fotoDrive[src]);
+}
+
+// Penanda kecil di pojok foto: tersimpan juga di Google Drive atau belum.
+function driveChip(e, src) {
+  const ok = inDrive(e, src);
+  return `<span class="drive-chip ${ok ? 'ok' : 'no'}" title="${ok ? 'Tersinkron ke Google Drive' : 'Belum tersinkron ke Google Drive'}">${icon(ok ? 'cloudCheck' : 'cloudOff')}<span class="sr-only">${ok ? 'Tersinkron ke Google Drive' : 'Belum di Google Drive'}</span></span>`;
+}
+
 function addPhoto(src, e) {
-  return lbPhotos.push({ src, cap: `${e.judul} · ${formatTanggal(e.tanggal)}${e.jam ? ' · ' + e.jam : ''}` }) - 1;
+  const drive = inDrive(e, src) ? ' · ✓ tersinkron ke Google Drive' : ' · belum tersinkron ke Google Drive';
+  return lbPhotos.push({ src, cap: `${e.judul} · ${formatTanggal(e.tanggal)}${e.jam ? ' · ' + e.jam : ''}${drive}` }) - 1;
 }
 
 // ---------- Kegiatan harian ----------
@@ -437,7 +449,7 @@ function renderStep(e) {
   const all = (e.foto || []).map(safePath).filter(Boolean);
   const idx = all.map(src => addPhoto(src, e));
   const photos = all.slice(0, 3).map((src, i) =>
-    `<button class="photo" data-lb="${idx[i]}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${i === 2 && all.length > 3 ? `<span class="photo-more">+${all.length - 3}</span>` : ''}</button>`).join('');
+    `<button class="photo" data-lb="${idx[i]}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${i === 2 && all.length > 3 ? `<span class="photo-more">+${all.length - 3}</span>` : driveChip(e, src)}</button>`).join('');
   return `<li class="step">
     <span class="step-dot">${icon('check')}</span>
     <div class="step-body">
@@ -449,7 +461,7 @@ function renderStep(e) {
       <h4>${esc(e.judul)}</h4>
       ${e.keterangan ? `<p class="ket" title="Ketuk untuk membaca selengkapnya">${esc(e.keterangan)}</p>` : ''}
       ${photos ? `<div class="photos">${photos}</div>` : ''}
-      ${dicatatHtml(e)}
+      ${metaHtml(e, all)}
     </div>
   </li>`;
 }
@@ -464,13 +476,23 @@ function lokasiHtml(e) {
     : `<span class="lokasi">${icon('pin')}${text}</span>`;
 }
 
-// Waktu pencatatan dari server saat kegiatan disimpan di panel admin.
-function dicatatHtml(e) {
+// Baris keterangan: waktu pencatatan dari server dan status Google Drive foto.
+function metaHtml(e, photos) {
+  const parts = [];
   const t = e.dicatat && new Date(e.dicatat);
-  if (!t || Number.isNaN(t.getTime())) return '';
-  const w = wibParts(t);
-  const hari = w.tanggal === e.tanggal ? '' : `${formatTanggal(w.tanggal, false)}, `;
-  return `<p class="dicatat" title="Waktu diambil dari server, bukan dari jam HP">${icon('clock')} Dicatat ${hari}${w.jam.replace(':', '.')}.${w.detik} WIB · waktu server${e.koordinat ? ' · lokasi GPS' : ''}</p>`;
+  if (t && !Number.isNaN(t.getTime())) {
+    const w = wibParts(t);
+    const hari = w.tanggal === e.tanggal ? '' : `${formatTanggal(w.tanggal, false)}, `;
+    parts.push(`<span title="Waktu diambil dari server, bukan dari jam HP">${icon('clock')} Dicatat ${hari}${w.jam.replace(':', '.')}.${w.detik} WIB · waktu server${e.koordinat ? ' · lokasi GPS' : ''}</span>`);
+  }
+  if (photos.length) {
+    const n = photos.filter(src => inDrive(e, src)).length;
+    const cls = n === photos.length ? 'ok' : n ? 'part' : 'no';
+    const text = n === photos.length ? `${n === 1 ? 'Foto' : `${n} foto`} tersinkron ke Google Drive`
+      : n ? `${n} dari ${photos.length} foto tersinkron ke Google Drive` : 'Foto belum tersinkron ke Google Drive';
+    parts.push(`<span class="drive-status ${cls}">${icon(n ? 'cloudCheck' : 'cloudOff')} ${text}</span>`);
+  }
+  return parts.length ? `<p class="dicatat">${parts.join('')}</p>` : '';
 }
 
 // ---------- Galeri ----------
@@ -479,7 +501,7 @@ function renderGaleri(list) {
   for (const e of list) {
     for (const src of (e.foto || []).map(safePath).filter(Boolean)) {
       items.push(`<button class="gallery-item" data-lb="${addPhoto(src, e)}" type="button">
-        <img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">
+        <img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${driveChip(e, src)}
         <span class="gallery-cap"><small>${esc(formatTanggal(e.tanggal, false))}</small>${esc(e.judul)}</span>
       </button>`);
     }

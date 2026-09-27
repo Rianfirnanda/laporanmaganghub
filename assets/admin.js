@@ -808,6 +808,12 @@ $('formEntry').addEventListener('submit', async ev => {
     const [y, m, d] = tanggal.split('-');
     const stamp = Date.now().toString(36);
     let done = 0;
+    // Salin foto asli ke Drive bersamaan dengan unggah ke GitHub, agar status
+    // sinkronnya ikut tersimpan di kegiatan dalam satu commit.
+    const driveInfo = { tanggal, jam: $('fJam').value, judul: $('fJudul').value.trim() };
+    const driveJob = drivePromise
+      ? drivePromise.then(() => copyToDrive(photosForDrive, driveInfo)).catch(error => ({ ids: [], error }))
+      : null;
     if (newPhotos.length) msg('saveMsg', `Mengunggah foto 0/${newPhotos.length}…`);
     const fileChanges = await mapLimit(newPhotos, UPLOAD_CONCURRENCY, async (p, i) => {
       const sha = await uploadBlob(await imageToBase64(p.file));
@@ -833,6 +839,13 @@ $('formEntry').addEventListener('submit', async ev => {
     const prev = entries.find(x => x.id === id);
     if (prev && prev.dicatat) data.dicatat = prev.dicatat;
     else if (!prev && serverSynced) data.dicatat = serverNow().toISOString();
+    // Status Google Drive per foto: { "uploads/…jpg": "<id file Drive>" }.
+    const driveRes = driveJob ? await driveJob : null;
+    const fotoDrive = {};
+    const oldDrive = (prev && prev.fotoDrive) || {};
+    keptPhotos.forEach(f => { if (oldDrive[f]) fotoDrive[f] = oldDrive[f]; });
+    if (driveRes) uploaded.forEach((f, i) => { if (driveRes.ids[i]) fotoDrive[f] = driveRes.ids[i]; });
+    if (Object.keys(fotoDrive).length) data.fotoDrive = fotoDrive;
 
     msg('saveMsg', 'Menyimpan ke GitHub…');
     const isEdit = Boolean(editingId);
@@ -845,14 +858,11 @@ $('formEntry').addEventListener('submit', async ev => {
     });
     entries = latest;
     let driveMsg = '';
-    if (drivePromise) {
-      try {
-        await drivePromise;
-        msg('saveMsg', 'Menyalin foto ke Google Drive…');
-        await copyToDrive(photosForDrive, data);
-        driveMsg = ' Foto juga tersalin ke Google Drive.';
-      } catch (e) {
-        toast(`Tersimpan di GitHub, tetapi gagal menyalin ke Google Drive: ${e.message}`, true);
+    if (driveRes) {
+      const ok = driveRes.ids.filter(Boolean).length;
+      if (ok === photosForDrive.length) driveMsg = ' Foto juga tersalin ke Google Drive.';
+      else {
+        toast(`Tersimpan di GitHub, tetapi ${photosForDrive.length - ok} foto gagal disalin ke Google Drive${driveRes.error ? `: ${driveRes.error.message}` : ''}. Gunakan "Sinkronkan foto ke Drive" di tab Keamanan.`, true);
         driveMsg = null;
       }
     }
@@ -887,6 +897,7 @@ async function deleteEntry(id) {
 }
 
 function renderList() {
+  renderDriveSync();
   renderHarianEntries();
   const q = $('listCari').value.trim().toLowerCase();
   const list = sortEntries(entries).filter(e => !q || `${e.judul} ${e.keterangan} ${e.tanggal}`.toLowerCase().includes(q));
@@ -1711,19 +1722,117 @@ function driveFileName(entry, file, i) {
 }
 
 // Salin foto asli (bukan versi yang diperkecil) ke Laporan Magang/<tanggal>.
-async function copyToDrive(files, entry) {
+// Hasil: ID file Drive per foto (null bila foto itu gagal disalin).
+async function copyToDrive(files, entry, msgId = 'saveMsg', nums = null) {
   const root = await driveFolder(DRIVE_ROOT);
   const day = await driveFolder(entry.tanggal, root);
   let done = 0;
-  await mapLimit(files, UPLOAD_CONCURRENCY, async (file, i) => {
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify({ name: driveFileName(entry, file, i), parents: [day] })], { type: 'application/json' }));
-    form.append('file', file);
-    await gdrive('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', body: form });
-    msg('saveMsg', `Menyalin ke Google Drive ${++done}/${files.length}…`);
+  let lastErr = null;
+  const ids = await mapLimit(files, UPLOAD_CONCURRENCY, async (file, i) => {
+    try {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: driveFileName(entry, file, nums ? nums[i] - 1 : i), parents: [day] })], { type: 'application/json' }));
+      form.append('file', file);
+      const res = await gdrive('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', body: form });
+      msg(msgId, `Menyalin ke Google Drive ${++done}/${files.length}…`);
+      return res.id || null;
+    } catch (e) {
+      lastErr = e;
+      return null;
+    }
   });
-  return root;
+  if (!ids.some(Boolean) && lastErr) throw lastErr;
+  return { ids, error: lastErr };
 }
+
+// ---------- Sinkronkan foto lama ke Drive ----------
+function unsyncedPhotos() {
+  return entries.flatMap(e => (e.foto || []).filter(safePath)
+    .filter(f => !(e.fotoDrive && e.fotoDrive[f]))
+    .map(f => ({ entry: e, path: f })));
+}
+
+function renderDriveSync() {
+  const total = entries.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+  const todo = unsyncedPhotos().length;
+  $('driveSyncBox').hidden = !driveCfg.clientId || !total;
+  $('driveSyncInfo').textContent = todo
+    ? `${total - todo} dari ${total} foto sudah ada di Google Drive. ${todo} foto belum tersinkron.`
+    : `Semua ${total} foto sudah tersinkron ke Google Drive.`;
+  $('btnDriveSync').hidden = !todo;
+}
+
+// Foto diambil dari GitHub (versi yang sudah diperkecil), lalu diunggah ke Drive.
+async function fetchPhoto(path) {
+  for (const url of [path, rawUrl(path)]) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) return new File([await res.blob()], path.split('/').pop(), { type: 'image/jpeg' });
+    } catch { /* coba sumber berikutnya */ }
+  }
+  throw new Error(`Foto ${path} tidak bisa diambil.`);
+}
+
+// { nomorFoto: idFile } untuk file "<jam> <judul> (n).ext" di Laporan Magang/<tanggal>.
+async function existingDriveFiles(entry) {
+  const root = await driveFolder(DRIVE_ROOT);
+  const day = await driveFolder(entry.tanggal, root);
+  const q = `'${day}' in parents and trashed = false`;
+  const found = await gdrive(`${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=200&spaces=drive`);
+  const prefix = driveFileName(entry, { name: 'x.jpg' }, 0).replace(/ \(1\)\.jpg$/, '');
+  const out = {};
+  for (const f of found.files || []) {
+    const m = f.name.startsWith(prefix) && f.name.slice(prefix.length).match(/^ \((\d+)\)\.\w+$/);
+    if (m && !out[m[1]]) out[m[1]] = f.id;
+  }
+  return out;
+}
+
+$('btnDriveSync').addEventListener('click', ev => {
+  if (!driveCfg.clientId) return toast('Atur Google Drive terlebih dahulu.', true);
+  const tokenPromise = ensureDriveToken();   // sinkron di dalam klik agar pop-up tidak diblokir
+  tokenPromise.catch(() => {});
+  withBusy(ev.currentTarget, async () => {
+    await tokenPromise;
+    const todo = unsyncedPhotos();
+    const byEntry = new Map();
+    todo.forEach(t => byEntry.set(t.entry.id, [...(byEntry.get(t.entry.id) || []), t]));
+    const result = {};   // id kegiatan -> { path: idDrive }
+    let done = 0, failed = 0;
+    for (const items of byEntry.values()) {
+      const entry = items[0].entry;
+      // Foto yang dulu sudah tersalin (sebelum status dicatat) dikenali dari namanya
+      // di folder Drive tanggal itu, supaya tidak terunggah dua kali.
+      const existing = await existingDriveFiles(entry).catch(() => ({}));
+      const files = [];
+      const paths = [];
+      for (const it of items) {
+        const n = (entry.foto || []).indexOf(it.path) + 1;
+        if (existing[n]) { (result[entry.id] ||= {})[it.path] = existing[n]; done++; continue; }
+        try { files.push(await fetchPhoto(it.path)); paths.push(it.path); } catch { failed++; }
+      }
+      const nums = paths.map(p => (entry.foto || []).indexOf(p) + 1);
+      if (!files.length) continue;
+      const { ids } = await copyToDrive(files, entry, 'driveSyncMsg', nums).catch(() => ({ ids: [] }));
+      paths.forEach((p, i) => {
+        if (ids[i]) { (result[entry.id] ||= {})[p] = ids[i]; done++; } else failed++;
+      });
+      msg('driveSyncMsg', `Tersinkron ${done}/${todo.length} foto…`);
+    }
+    if (done) {
+      let latest;
+      await commit(`Sinkron ${done} foto ke Google Drive`, async base => {
+        latest = await readRepoJSON(DATA_PATH, base, []);
+        latest.forEach(e => { if (result[e.id]) e.fotoDrive = { ...(e.fotoDrive || {}), ...result[e.id] }; });
+        return [{ path: DATA_PATH, content: JSON.stringify(sortEntries(latest), null, 2) + '\n' }];
+      });
+      entries = latest;
+      renderList();
+    }
+    renderDriveSync();
+    toast(failed ? `${done} foto tersinkron, ${failed} gagal. Coba lagi nanti.` : `✅ ${done} foto tersinkron ke Google Drive.`, Boolean(failed));
+  }, 'driveSyncMsg');
+});
 
 function renderDrive() {
   $('dClientId').value = driveCfg.clientId || '';
@@ -1731,6 +1840,7 @@ function renderDrive() {
   $('driveOrigin').textContent = location.origin;
   $('driveStatus').textContent = driveReady() ? 'Aktif' : driveCfg.clientId ? 'Nonaktif' : 'Belum diatur';
   $('driveNote').hidden = !driveReady();
+  renderDriveSync();
   if (driveCfg.folderId) {
     $('driveFolderLink').href = `https://drive.google.com/drive/folders/${encodeURIComponent(driveCfg.folderId)}`;
     $('driveFolderLink').hidden = false;
