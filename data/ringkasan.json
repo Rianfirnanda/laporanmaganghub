@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T15:27:02.234Z",
+  "diperbarui": "2026-09-27T15:31:54.054Z",
   "minggu": 1,
-  "mingguIni": "Rian mengikuti perkenalan batch 2 MagangHub, mempelajari sistem website lintas‑benteng, dan menginstall VPN. Selama minggu ini ia mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen pada website. Ia juga menyiapkan atribut serta mendukung lomba Hari Statistik Nasional di BPS Kabupaten Bengkulu Tengah.",
+  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch 2 MagangHub, mempelajari alur kerja website lintas‑benteng.web.app, dan menginstall perangkat lunak pendukung. Ia melanjutkan pengembangan website dengan menambah fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen, termasuk migrasi inferensi ke browser dan perbaikan bug. Selain itu, Rian menyiapkan atribut lomba HSN, memasang banner, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional.",
   "sorotan": [
     "Pengembangan dashboard interaktif",
-    "Perbaikan fitur manajemen kegiatan",
-    "Dukungan lomba Hari Statistik Nasional"
+    "Migrasi inferensi ke browser",
+    "Persiapan lomba HSN"
   ],
-  "keseluruhan": "Rian telah menunjukkan kemampuan cepat beradaptasi dengan lingkungan kerja BPS dan menguasai alat‑alat teknis. Ia konsisten mengembangkan fitur website serta berkontribusi pada kegiatan tim, memperkuat fondasi magang yang produktif.",
+  "keseluruhan": "Rian telah menunjukkan kemampuan adaptasi cepat sejak perkenalan hingga kontribusi pada pengembangan sistem dan kegiatan BPS. Ia aktif dalam tugas teknis maupun kegiatan internal, menandakan progres yang konsisten dalam magang ini.",
   "mingguan": {
-    "1": "Rian mengikuti perkenalan batch 2 MagangHub, mempelajari sistem website lintas‑benteng, dan menginstall VPN. Selama minggu ini ia mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen pada website. Ia juga menyiapkan atribut serta mendukung lomba Hari Statistik Nasional di BPS Kabupaten Bengkulu Tengah."
+    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch 2 MagangHub, mempelajari alur kerja website lintas‑benteng.web.app, dan menginstall perangkat lunak pendukung. Ia melanjutkan pengembangan website dengan menambah fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen, termasuk migrasi inferensi ke browser dan perbaikan bug. Selain itu, Rian menyiapkan atribut lomba HSN, memasang banner, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional."
   }
 }
