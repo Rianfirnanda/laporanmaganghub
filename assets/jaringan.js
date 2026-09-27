@@ -1,11 +1,15 @@
-// Indikator kualitas jaringan di navbar panel admin.
-// Mengukur waktu respons (ping) ke server website setiap 10 detik selama
-// halaman terlihat, lalu menampilkannya sebagai 4 batang sinyal.
+// Indikator kualitas jaringan di navbar panel admin (realtime).
+// Setiap 2 detik selama halaman terlihat, browser mengirim permintaan kecil
+// (HEAD, tanpa isi) ke server website lalu mencatat waktu bolak-baliknya (ping).
+// Angka ms = pengukuran terbaru; jumlah batang = median 3 pengukuran terakhir
+// agar warna tidak berkedip karena satu lonjakan.
 (function () {
   const el = document.getElementById('netStatus');
   if (!el) return;
-  const INTERVAL = 10000;
-  const TIMEOUT = 8000;
+  const INTERVAL = 2000;
+  const TIMEOUT = 5000;
+  const SIMPAN = 10;                 // riwayat untuk rata-rata/jitter
+  const URL_PING = 'version.json?ping';   // URL tetap: dilayani langsung dari server CDN terdekat
   const samples = [];
   let timer = 0;
   let last = null;       // { ms, level, label, waktu }
@@ -38,6 +42,24 @@
     el.setAttribute('aria-label', info);
   }
 
+  // Waktu murni di jaringan (kirim permintaan sampai byte pertama balasan) dari
+  // Resource Timing; tanpa antrean browser. Bila tidak tersedia, pakai stopwatch.
+  function waktuJaringan() {
+    try {
+      const e = performance.getEntriesByType('resource').filter(x => x.name.endsWith(URL_PING)).pop();
+      performance.clearResourceTimings();   // cegah buffer penuh (±250 entri)
+      return e && e.requestStart > 0 && e.responseStart >= e.requestStart ? e.responseStart - e.requestStart : null;
+    } catch { return null; }
+  }
+
+  function statistik() {
+    if (!samples.length) return '';
+    const avg = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+    const jitter = samples.length > 1
+      ? Math.round(samples.slice(1).reduce((n, v, i) => n + Math.abs(v - samples[i]), 0) / (samples.length - 1)) : 0;
+    return `rata-rata ${avg} ms, min ${Math.min(...samples)}, maks ${Math.max(...samples)}, jitter ${jitter} ms dari ${samples.length} pengukuran`;
+  }
+
   async function ukur() {
     if (running) return;
     if (!navigator.onLine) {
@@ -50,13 +72,13 @@
     const stop = setTimeout(() => ctrl.abort(), TIMEOUT);
     const t0 = performance.now();
     try {
-      const res = await fetch(`version.json?ping=${Date.now()}`, { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+      const res = await fetch(URL_PING, { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
       if (!res.ok && res.status !== 405) throw new Error(String(res.status));
-      samples.push(Math.round(performance.now() - t0));
-      if (samples.length > 3) samples.shift();
-      // Median beberapa pengukuran terakhir agar tidak melompat-lompat.
-      const ms = [...samples].sort((a, b) => a - b)[Math.floor(samples.length / 2)];
-      const lv = LEVELS.find(l => ms <= l.max);
+      const ms = Math.max(1, Math.round(waktuJaringan() ?? performance.now() - t0));
+      samples.push(ms);
+      if (samples.length > SIMPAN) samples.shift();
+      const tiga = samples.slice(-3).sort((a, b) => a - b);
+      const lv = LEVELS.find(l => tiga[Math.floor(tiga.length / 2)] <= l.max);
       tampil({ ...lv, ms });
     } catch {
       samples.length = 0;
@@ -67,18 +89,24 @@
     }
   }
 
-  function jadwal() {
-    clearInterval(timer);
+  // Pengukuran berikutnya dimulai 2 detik setelah yang sebelumnya selesai,
+  // jadi di jaringan lambat permintaan tidak menumpuk.
+  async function putaran() {
+    clearTimeout(timer);
     if (document.hidden) return;
-    ukur();
-    timer = setInterval(ukur, INTERVAL);
+    await ukur();
+    if (!document.hidden) timer = setTimeout(putaran, INTERVAL);
+  }
+
+  function jadwal() {
+    clearTimeout(timer);
+    if (!document.hidden) putaran();
   }
 
   el.addEventListener('click', async () => {
-    samples.length = 0;
     await ukur();
     if (last && typeof toast === 'function') {
-      const detail = [last.ms != null ? `Ping ${last.ms} ms` : '', koneksi()].filter(Boolean).join(' · ');
+      const detail = [last.ms != null ? `ping ${last.ms} ms` : '', statistik(), koneksi()].filter(Boolean).join(' · ');
       const saran = last.cls === 'off' ? ' Simpan setelah koneksi kembali.'
         : last.cls === 'poor' || last.cls === 'fair' ? ' Unggah foto mungkin lambat; tunggu sampai selesai sebelum menutup halaman.' : '';
       toast(`Jaringan ${last.label.toLowerCase()}${detail ? ` (${detail})` : ''}.${saran}`, last.cls === 'off' || last.cls === 'poor');
