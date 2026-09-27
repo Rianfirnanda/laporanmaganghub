@@ -1,0 +1,14 @@
+{
+  "diperbarui": "2026-09-27T10:06:43.649Z",
+  "minggu": 1,
+  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub dan mempelajari alur kerja website lintas‑benteng, kemudian mengembangkan fitur visualisasi dan manajemen data pada dashboard kegiatan. Ia juga memindahkan proses kalkulasi model sentimen ke sisi klien, melatih ulang model dengan akurasi 81,4 % serta memperbaiki beberapa bug. Selain itu, Rian berpartisipasi dalam sosialisasi SSO, VPN, dan persiapan Hari Statistik Nasional.",
+  "sorotan": [
+    "Pengembangan dashboard aktivitas",
+    "Integrasi model sentimen",
+    "Sosialisasi SSO dan VPN"
+  ],
+  "keseluruhan": "Rian menunjukkan progres cepat dalam pengembangan sistem monitoring serta adaptasi terhadap lingkungan kerja BPS. Selama sebulan pertama, ia telah menguasai teknologi utama dan berkontribusi pada proyek penting tim.",
+  "mingguan": {
+    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub dan mempelajari alur kerja website lintas‑benteng, kemudian mengembangkan fitur visualisasi dan manajemen data pada dashboard kegiatan. Ia juga memindahkan proses kalkulasi model sentimen ke sisi klien, melatih ulang model dengan akurasi 81,4 % serta memperbaiki beberapa bug. Selain itu, Rian berpartisipasi dalam sosialisasi SSO, VPN, dan persiapan Hari Statistik Nasional."
+  }
+}
