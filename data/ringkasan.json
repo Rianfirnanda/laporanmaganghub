@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T15:31:54.054Z",
+  "diperbarui": "2026-09-27T15:34:47.526Z",
   "minggu": 1,
-  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch 2 MagangHub, mempelajari alur kerja website lintas‑benteng.web.app, dan menginstall perangkat lunak pendukung. Ia melanjutkan pengembangan website dengan menambah fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen, termasuk migrasi inferensi ke browser dan perbaikan bug. Selain itu, Rian menyiapkan atribut lomba HSN, memasang banner, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional.",
+  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, kemudian melanjutkan pengembangan website monitoring magang dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan. Ia juga menyiapkan atribut serta mendukung pelaksanaan lomba Hari Statistik Nasional bersama tim BPS.",
   "sorotan": [
-    "Pengembangan dashboard interaktif",
-    "Migrasi inferensi ke browser",
+    "Pengembangan dashboard kegiatan",
+    "Perbaikan fitur analisis sentimen",
     "Persiapan lomba HSN"
   ],
-  "keseluruhan": "Rian telah menunjukkan kemampuan adaptasi cepat sejak perkenalan hingga kontribusi pada pengembangan sistem dan kegiatan BPS. Ia aktif dalam tugas teknis maupun kegiatan internal, menandakan progres yang konsisten dalam magang ini.",
+  "keseluruhan": "Sepanjang magang, Rian telah menguasai alur kerja sistem BPS dan berkontribusi pada pengembangan aplikasi lintas‑benteng. Pengalaman ini memperkuat kemampuan teknisnya sekaligus memperluas jaringan kerja dengan tim BPS.",
   "mingguan": {
-    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch 2 MagangHub, mempelajari alur kerja website lintas‑benteng.web.app, dan menginstall perangkat lunak pendukung. Ia melanjutkan pengembangan website dengan menambah fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan analisis sentimen, termasuk migrasi inferensi ke browser dan perbaikan bug. Selain itu, Rian menyiapkan atribut lomba HSN, memasang banner, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional."
+    "1": "Rian mengikuti perkenalan batch MagangHub, kemudian melanjutkan pengembangan website monitoring magang dengan menambah fitur dashboard, visualisasi data, dan perbaikan manajemen kegiatan. Ia juga menyiapkan atribut serta mendukung pelaksanaan lomba Hari Statistik Nasional bersama tim BPS."
   }
 }
