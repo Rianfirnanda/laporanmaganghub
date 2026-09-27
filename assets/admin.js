@@ -1174,7 +1174,9 @@ $('aiModel').addEventListener('change', () => {
 $('formAi').addEventListener('submit', async ev => {
   ev.preventDefault();
   const key = $('aiKey').value.trim();
-  if (!/^AIza[\w-]{30,}$/.test(key)) return toast('Kunci API tidak valid. Kunci Gemini diawali "AIza".', true);
+  if (!key) return toast('Tempel kunci API Gemini dari Google AI Studio terlebih dahulu.', true);
+  // Format kunci bisa berubah (umumnya diawali "AIza"); keabsahannya diuji langsung ke Google.
+  if (!/^[\w.-]{20,}$/.test(key)) return toast('Kunci API tidak valid. Salin ulang kunci dari Google AI Studio tanpa spasi.', true);
   const stored = readStore();
   if (!stored) return;
   await withBusy(ev.submitter, async () => {
