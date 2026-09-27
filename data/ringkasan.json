@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T10:06:43.649Z",
+  "diperbarui": "2026-09-27T10:26:33.542Z",
   "minggu": 1,
-  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub dan mempelajari alur kerja website lintas‑benteng, kemudian mengembangkan fitur visualisasi dan manajemen data pada dashboard kegiatan. Ia juga memindahkan proses kalkulasi model sentimen ke sisi klien, melatih ulang model dengan akurasi 81,4 % serta memperbaiki beberapa bug. Selain itu, Rian berpartisipasi dalam sosialisasi SSO, VPN, dan persiapan Hari Statistik Nasional.",
+  "mingguIni": "Peserta mengikuti perkenalan MagangHub Batch 2, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Selama minggu ini ia mengembangkan dan menyempurnakan fitur dashboard serta modul analisis sentimen, termasuk pelatihan ulang model dengan akurasi 81,4 %. Selain itu, ia ikut sosialisasi SSO, penanganan anomali data, dan kegiatan peringatan Hari Statistik Nasional.",
   "sorotan": [
     "Pengembangan dashboard aktivitas",
-    "Integrasi model sentimen",
+    "Pelatihan model sentimen",
     "Sosialisasi SSO dan VPN"
   ],
-  "keseluruhan": "Rian menunjukkan progres cepat dalam pengembangan sistem monitoring serta adaptasi terhadap lingkungan kerja BPS. Selama sebulan pertama, ia telah menguasai teknologi utama dan berkontribusi pada proyek penting tim.",
+  "keseluruhan": "Sejak memulai magang, peserta telah aktif menguasai sistem BPS, mengimplementasikan fitur baru pada website, dan berkontribusi pada kegiatan internal. Pengalaman ini memperkuat kemampuan teknis dan kolaborasinya di lingkungan BPS Kabupaten Bengkulu Tengah.",
   "mingguan": {
-    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub dan mempelajari alur kerja website lintas‑benteng, kemudian mengembangkan fitur visualisasi dan manajemen data pada dashboard kegiatan. Ia juga memindahkan proses kalkulasi model sentimen ke sisi klien, melatih ulang model dengan akurasi 81,4 % serta memperbaiki beberapa bug. Selain itu, Rian berpartisipasi dalam sosialisasi SSO, VPN, dan persiapan Hari Statistik Nasional."
+    "1": "Peserta mengikuti perkenalan MagangHub Batch 2, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Selama minggu ini ia mengembangkan dan menyempurnakan fitur dashboard serta modul analisis sentimen, termasuk pelatihan ulang model dengan akurasi 81,4 %. Selain itu, ia ikut sosialisasi SSO, penanganan anomali data, dan kegiatan peringatan Hari Statistik Nasional."
   }
 }
