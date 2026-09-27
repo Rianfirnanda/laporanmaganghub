@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <title>Panel Admin · Laporan Magang</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Crect x='20' y='28' width='24' height='20' rx='3' fill='white'/%3E%3Cpath d='M25 28v-5a7 7 0 0 1 14 0v5' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,83 +17,239 @@
   <header class="topbar">
     <div class="container topbar-inner">
       <strong>Panel Admin · Laporan Magang</strong>
-      <a href="./" class="btn btn-ghost btn-sm">← Lihat website</a>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" type="button" id="btnLock" hidden>🔒 Kunci</button>
+        <a href="./" class="btn btn-ghost btn-sm">← Lihat website</a>
+      </div>
     </div>
   </header>
 
-  <main class="container admin-grid">
-    <!-- Pengaturan koneksi GitHub -->
-    <section class="card" id="cardSettings">
-      <div class="card-head">
-        <h2>Koneksi GitHub</h2>
-        <span class="status" id="connStatus">Belum terhubung</span>
-      </div>
-      <form id="formSettings" class="form">
+  <main class="container admin-main">
+    <!-- ===== Masuk: pertama kali (atur token + kata sandi) ===== -->
+    <section class="card auth-card" id="authSetup" hidden>
+      <h2>Hubungkan ke GitHub</h2>
+      <p class="hint" id="setupNote">Masukkan token GitHub lalu buat kata sandi panel. Token akan dienkripsi dengan kata sandi ini sebelum disimpan di perangkat.</p>
+      <form id="formSetup" class="form" autocomplete="off">
         <div class="row">
-          <label class="field"><span>Username / owner</span><input id="sOwner" required></label>
-          <label class="field"><span>Nama repository</span><input id="sRepo" required></label>
+          <label class="field"><span>Username / owner</span><input id="sOwner" required pattern="[A-Za-z0-9._\-]+"></label>
+          <label class="field"><span>Nama repository</span><input id="sRepo" required pattern="[A-Za-z0-9._\-]+"></label>
           <label class="field"><span>Branch</span><input id="sBranch" value="main" required></label>
         </div>
         <label class="field">
-          <span>Token GitHub (fine-grained, izin <em>Contents: Read and write</em>)</span>
-          <input id="sToken" type="password" autocomplete="off" placeholder="github_pat_…" required>
+          <span>Token GitHub (fine-grained, hanya repo ini, izin <em>Contents: Read and write</em>)</span>
+          <input id="sToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" required>
         </label>
-        <p class="hint">Token hanya disimpan di browser ini (localStorage) dan dikirim langsung ke api.github.com. Jangan login di komputer umum.</p>
+        <div class="row row-2">
+          <label class="field"><span>Kata sandi panel (min. 8 karakter)</span><input id="sPass" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label class="field"><span>Ulangi kata sandi</span><input id="sPass2" type="password" autocomplete="new-password" minlength="8" required></label>
+        </div>
         <div class="actions">
-          <button class="btn btn-primary" type="submit">Simpan &amp; hubungkan</button>
-          <button class="btn btn-ghost" type="button" id="btnLogout">Hapus token</button>
+          <button class="btn btn-primary" type="submit" id="btnSetup">Simpan &amp; hubungkan</button>
         </div>
       </form>
     </section>
 
-    <!-- Form tambah / edit kegiatan -->
-    <section class="card" id="cardForm">
-      <div class="card-head">
-        <h2 id="formTitle">Tambah kegiatan</h2>
-        <button class="btn btn-ghost btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
-      </div>
-      <form id="formEntry" class="form">
-        <div class="row">
-          <label class="field"><span>Tanggal</span><input type="date" id="fTanggal" required></label>
-          <label class="field"><span>Jam</span><input type="time" id="fJam" required></label>
-          <label class="field"><span>Sesi</span>
-            <select id="fSesi"><option>Pagi</option><option>Siang</option><option>Sore</option></select>
-          </label>
-        </div>
-        <label class="field"><span>Judul kegiatan</span>
-          <input id="fJudul" required maxlength="140" placeholder="Contoh: Entri data Susenas di aplikasi">
-        </label>
-        <label class="field"><span>Lokasi (opsional)</span>
-          <input id="fLokasi" maxlength="120" placeholder="Contoh: Ruang IPDS, Kantor BPS Benteng">
-        </label>
-        <label class="field"><span>Keterangan</span>
-          <textarea id="fKet" rows="4" placeholder="Jelaskan apa yang dikerjakan, hasilnya, dan siapa yang terlibat."></textarea>
-        </label>
-        <div class="field">
-          <span>Foto dokumentasi</span>
-          <label class="dropzone" id="dropzone">
-            <input type="file" id="fFoto" accept="image/*" multiple>
-            <strong>Pilih atau seret foto ke sini</strong>
-            <small>Foto otomatis diperkecil (maks. 1600px) sebelum diunggah.</small>
-          </label>
-          <div class="previews" id="previews"></div>
-        </div>
+    <!-- ===== Masuk: buka kunci ===== -->
+    <section class="card auth-card" id="authUnlock" hidden>
+      <div class="lock-icon" aria-hidden="true">🔒</div>
+      <h2>Panel terkunci</h2>
+      <p class="hint" id="unlockRepo"></p>
+      <form id="formUnlock" class="form" autocomplete="off">
+        <label class="field"><span>Kata sandi panel</span><input id="uPass" type="password" autocomplete="current-password" required autofocus></label>
         <div class="actions">
-          <button class="btn btn-primary" type="submit" id="btnSave">Simpan kegiatan</button>
-          <span class="progress-msg" id="saveMsg"></span>
+          <button class="btn btn-primary" type="submit" id="btnUnlock">Buka panel</button>
+          <button class="btn btn-link" type="button" id="btnForgot">Lupa kata sandi?</button>
         </div>
       </form>
     </section>
 
-    <!-- Daftar kegiatan -->
-    <section class="card wide">
-      <div class="card-head">
-        <h2>Daftar kegiatan</h2>
-        <input type="search" id="listCari" placeholder="Cari…" class="input-sm">
+    <!-- ===== Aplikasi (hanya tampil setelah terbuka) ===== -->
+    <div id="app" hidden>
+      <nav class="tabs" role="tablist">
+        <button type="button" role="tab" class="tab active" data-tab="kegiatan">Kegiatan</button>
+        <button type="button" role="tab" class="tab" data-tab="profil">Profil &amp; Tampilan</button>
+        <button type="button" role="tab" class="tab" data-tab="keamanan">Keamanan</button>
+      </nav>
+
+      <!-- ---------- Tab Kegiatan ---------- -->
+      <div class="panel" data-panel="kegiatan">
+        <section class="card" id="cardForm">
+          <div class="card-head">
+            <h2 id="formTitle">Tambah kegiatan</h2>
+            <button class="btn btn-ghost btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
+          </div>
+          <form id="formEntry" class="form">
+            <div class="row">
+              <label class="field"><span>Tanggal</span><input type="date" id="fTanggal" required></label>
+              <label class="field"><span>Jam</span><input type="time" id="fJam" required></label>
+              <label class="field"><span>Sesi</span>
+                <select id="fSesi"><option>Pagi</option><option>Siang</option><option>Sore</option></select>
+              </label>
+            </div>
+            <label class="field"><span>Judul kegiatan</span>
+              <input id="fJudul" required maxlength="140" placeholder="Contoh: Entri data Susenas di aplikasi">
+            </label>
+            <label class="field"><span>Lokasi (opsional)</span>
+              <input id="fLokasi" maxlength="120" placeholder="Contoh: Ruang IPDS, Kantor BPS Benteng">
+            </label>
+            <label class="field"><span>Keterangan</span>
+              <textarea id="fKet" rows="4" maxlength="5000" placeholder="Jelaskan apa yang dikerjakan, hasilnya, dan siapa yang terlibat."></textarea>
+            </label>
+            <div class="field">
+              <span>Foto dokumentasi</span>
+              <label class="dropzone" id="dropzone">
+                <input type="file" id="fFoto" accept="image/*" multiple>
+                <strong>Pilih atau seret foto ke sini</strong>
+                <small>Foto otomatis diperkecil (maks. 1600px) sebelum diunggah.</small>
+              </label>
+              <div class="previews" id="previews"></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" type="submit" id="btnSave">Simpan kegiatan</button>
+              <span class="progress-msg" id="saveMsg"></span>
+            </div>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Daftar kegiatan</h2>
+            <input type="search" id="listCari" placeholder="Cari…" class="input-sm">
+          </div>
+          <div id="entryList"><p class="empty">Memuat…</p></div>
+        </section>
       </div>
-      <div id="entryList"><p class="empty">Hubungkan GitHub untuk memuat data.</p></div>
-    </section>
+
+      <!-- ---------- Tab Profil & Tampilan ---------- -->
+      <div class="panel" data-panel="profil" hidden>
+        <form id="formConfig" class="stack">
+          <section class="card">
+            <h2 class="card-title">Profil</h2>
+            <div class="profile-edit">
+              <div class="avatar avatar-lg" id="cfgAvatar">–</div>
+              <div class="profile-edit-actions">
+                <label class="btn btn-ghost btn-sm file-btn">
+                  Ganti foto profil
+                  <input type="file" id="cfgFoto" accept="image/*">
+                </label>
+                <button type="button" class="btn btn-danger btn-sm" id="cfgFotoHapus">Hapus foto</button>
+                <small class="hint">Foto otomatis dipotong persegi (480×480).</small>
+              </div>
+            </div>
+            <div class="form">
+              <label class="field"><span>Nama lengkap</span><input id="cNama" required maxlength="80"></label>
+              <div class="row row-2">
+                <label class="field"><span>Posisi</span><input id="cPosisi" maxlength="80"></label>
+                <label class="field"><span>Instansi</span><input id="cInstansi" maxlength="100"></label>
+              </div>
+              <label class="field"><span>Keterangan program</span><input id="cProgram" maxlength="160"></label>
+              <div class="row row-2">
+                <label class="field"><span>Tanggal mulai magang</span><input type="date" id="cMulai" required></label>
+                <label class="field"><span>Tanggal selesai magang</span><input type="date" id="cSelesai" required></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">Tampilan</h2>
+            <div class="form">
+              <label class="field"><span>Judul tab browser (kosongkan untuk otomatis)</span><input id="cJudul" maxlength="100" placeholder="Laporan Magang · Nama Anda"></label>
+              <div class="row row-2">
+                <label class="field"><span>Warna tema</span>
+                  <span class="color-field"><input type="color" id="cWarna"><code id="cWarnaText"></code></span>
+                </label>
+                <label class="field check">
+                  <input type="checkbox" id="cAdminLink">
+                  <span>Tampilkan tautan "Panel admin" di footer website</span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">Footer</h2>
+            <div class="form">
+              <label class="field"><span>Teks baris bawah (kosongkan untuk "© tahun nama · instansi")</span><input id="cFooterTeks" maxlength="200"></label>
+
+              <div class="field">
+                <span>Bagian footer (misalnya Tentang, Mentor, Kontak, Jam kerja)</span>
+                <div id="cSections" class="repeat-list"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnAddSection">+ Tambah bagian</button>
+              </div>
+
+              <label class="field"><span>Judul kolom tautan</span><input id="cJudulTautan" maxlength="40" placeholder="Tautan"></label>
+              <div class="field">
+                <span>Tautan (http/https, mailto:, tel:)</span>
+                <div id="cLinks" class="repeat-list"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnAddLink">+ Tambah tautan</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="actions sticky-actions">
+            <button class="btn btn-primary" type="submit" id="btnSaveConfig">Simpan pengaturan</button>
+            <button class="btn btn-ghost" type="button" id="btnResetConfig">Batalkan perubahan</button>
+            <span class="progress-msg" id="configMsg"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- ---------- Tab Keamanan ---------- -->
+      <div class="panel" data-panel="keamanan" hidden>
+        <section class="card">
+          <h2 class="card-title">Status</h2>
+          <dl class="kv" id="secInfo"></dl>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Ganti kata sandi panel</h2>
+          <form id="formPass" class="form" autocomplete="off">
+            <label class="field"><span>Kata sandi saat ini</span><input id="pOld" type="password" autocomplete="current-password" required></label>
+            <div class="row row-2">
+              <label class="field"><span>Kata sandi baru (min. 8 karakter)</span><input id="pNew" type="password" autocomplete="new-password" minlength="8" required></label>
+              <label class="field"><span>Ulangi kata sandi baru</span><input id="pNew2" type="password" autocomplete="new-password" minlength="8" required></label>
+            </div>
+            <div class="actions"><button class="btn btn-primary" type="submit">Ganti kata sandi</button></div>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Perangkat ini</h2>
+          <p class="hint">Hapus token dari perangkat ini jika Anda memakai komputer orang lain, atau untuk mengganti token. Token di GitHub tetap aktif sampai Anda mencabutnya di
+            <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener noreferrer">pengaturan token GitHub</a>.</p>
+          <div class="actions"><button class="btn btn-danger" type="button" id="btnForget">Hapus token dari perangkat ini</button></div>
+        </section>
+      </div>
+    </div>
   </main>
+
+  <template id="tplSection">
+    <div class="repeat-row">
+      <div class="repeat-fields">
+        <input class="r-judul" maxlength="60" placeholder="Judul, misalnya: Mentor Pembimbing">
+        <textarea class="r-isi" rows="3" maxlength="1000" placeholder="Isi bagian ini"></textarea>
+      </div>
+      <div class="repeat-tools">
+        <button type="button" class="icon-btn" data-move="-1" title="Naik">↑</button>
+        <button type="button" class="icon-btn" data-move="1" title="Turun">↓</button>
+        <button type="button" class="icon-btn danger" data-remove title="Hapus">×</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="tplLink">
+    <div class="repeat-row">
+      <div class="repeat-fields row-2">
+        <input class="r-label" maxlength="60" placeholder="Label, misalnya: Instagram">
+        <input class="r-url" maxlength="300" placeholder="https://…">
+      </div>
+      <div class="repeat-tools">
+        <button type="button" class="icon-btn" data-move="-1" title="Naik">↑</button>
+        <button type="button" class="icon-btn" data-move="1" title="Turun">↓</button>
+        <button type="button" class="icon-btn danger" data-remove title="Hapus">×</button>
+      </div>
+    </div>
+  </template>
 
   <div class="toast" id="toast" hidden></div>
 

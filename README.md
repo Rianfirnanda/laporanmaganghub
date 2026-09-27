@@ -7,9 +7,14 @@ lewat **panel admin** (`admin.html`) langsung dari browser/HP, tanpa server atau
 - `index.html`: halaman publik. Kegiatan dikelompokkan per **minggu** lalu per **hari**
   (pagi / siang / sore), dengan filter minggu, tanggal, dan pencarian, galeri foto, serta
   tombol **Cetak laporan** (bisa disimpan sebagai PDF untuk laporan mingguan).
-- `admin.html`: tambah, edit, dan hapus kegiatan serta unggah foto. Foto otomatis diperkecil
-  (maks. 1600px, JPEG) lalu disimpan ke folder `uploads/`, dan data ke `data/kegiatan.json`.
-  Setiap penyimpanan menjadi **satu commit** di repository ini.
+- `admin.html`: panel yang dikunci dengan kata sandi, terdiri dari tiga tab:
+  - **Kegiatan**: tambah, edit, dan hapus kegiatan serta foto. Foto otomatis diperkecil
+    (maks. 1600px, JPEG) dan metadata-nya (termasuk lokasi GPS) dibuang.
+  - **Profil & Tampilan**: foto profil, nama, posisi, instansi, tanggal magang, judul tab,
+    warna tema, serta isi footer (bagian bebas seperti Tentang/Mentor/Kontak dan daftar tautan).
+  - **Keamanan**: status koneksi, ganti kata sandi panel, dan hapus token dari perangkat.
+
+  Setiap penyimpanan menjadi **satu commit** di repository ini (`data/`, `uploads/`).
 
 ## Cara memasang (sekali saja)
 
@@ -24,26 +29,44 @@ lewat **panel admin** (`admin.html`) langsung dari browser/HP, tanpa server atau
    - Permissions → Repository permissions → **Contents: Read and write**
    - Atur masa berlaku sampai akhir magang (mis. April 2027), lalu salin tokennya.
 4. Buka `https://<username>.github.io/laporanmaganghub/admin.html`, isi username, nama repo,
-   branch `main`, tempel token, lalu klik **Simpan & hubungkan**.
+   branch `main`, tempel token, **buat kata sandi panel** (min. 8 karakter), lalu klik **Simpan & hubungkan**.
+   Selanjutnya panel cukup dibuka dengan kata sandi tersebut.
 
 ## Pemakaian harian
 
-1. Buka `admin.html` di HP atau laptop.
+1. Buka `admin.html` di HP atau laptop dan masukkan kata sandi panel.
 2. Isi tanggal, jam (sesi pagi/siang/sore terisi otomatis), judul, lokasi, keterangan, dan pilih foto.
 3. Klik **Simpan kegiatan**. Website publik diperbarui dalam ±1 menit.
 
 Untuk pemeriksaan mingguan, kirim tautan dengan filter minggu, misalnya
 `https://<username>.github.io/laporanmaganghub/?minggu=3`, atau gunakan **Cetak laporan → Simpan sebagai PDF**.
 
-## Mengubah profil
+## Mengubah profil dan tampilan
 
-Edit `data/config.json` (nama, posisi, instansi, tanggal mulai dan selesai magang).
+Buka tab **Profil & Tampilan** di panel admin. Semua pengaturan disimpan di `data/config.json`.
 Tanggal mulai dipakai untuk menghitung "Hari ke-" dan "Minggu ke-".
 
-## Catatan keamanan
+## Keamanan
 
-- Token hanya disimpan di browser yang dipakai (localStorage). Klik **Hapus token** jika memakai
-  perangkat orang lain, dan jangan pernah menaruh token di dalam file repository.
-- Siapa pun bisa membuka `admin.html`, tetapi tanpa token tidak ada yang bisa diubah.
-- Karena repository public, semua foto yang diunggah bisa dilihat publik. Hindari mengunggah
+GitHub Pages hanya menyajikan file statis, jadi tidak ada server yang bisa memeriksa login.
+Yang melindungi repository adalah **token GitHub**. Panel ini menjaga token itu sebagai berikut:
+
+| Perlindungan | Keterangan |
+|---|---|
+| Token terenkripsi | Disimpan di browser dalam bentuk terenkripsi AES-256-GCM, dengan kunci dari kata sandi panel (PBKDF2-SHA256, 310.000 iterasi). Token asli hanya ada di memori selama panel terbuka. |
+| Kunci otomatis | Panel terkunci setelah 15 menit tidak aktif, saat tombol **Kunci** ditekan, atau saat halaman dimuat ulang. |
+| Batas percobaan | Setelah 5 kali salah kata sandi, percobaan berikutnya ditunda. |
+| Content-Security-Policy | Hanya skrip dari situs ini yang boleh berjalan, dan panel admin hanya boleh terhubung ke `api.github.com`. |
+| Anti-clickjacking | Panel admin menolak tampil di dalam `<iframe>`. |
+| Validasi data | Semua teks di-escape. Tautan footer hanya boleh `https://`, `mailto:`, atau `tel:`, dan foto hanya dari folder `uploads/`. |
+| Tautan admin tersembunyi | Tautan "Panel admin" tidak tampil di website kecuali diaktifkan. Halaman admin juga `noindex`. |
+
+Hal yang tetap perlu Anda jaga:
+
+- Gunakan token **fine-grained** yang hanya untuk repo ini dengan izin *Contents: Read and write*
+  dan masa berlaku terbatas. Jangan pakai token classic (`ghp_…`).
+- Jangan bagikan token atau kata sandi panel. Jika token bocor, cabut di
+  <https://github.com/settings/personal-access-tokens> lalu buat yang baru.
+- Di komputer umum, klik **Keamanan → Hapus token dari perangkat ini** setelah selesai.
+- Karena repository **public**, semua foto dan keterangan bisa dilihat siapa saja. Jangan unggah
   dokumen rahasia, data mentah responden, atau informasi pribadi lain.

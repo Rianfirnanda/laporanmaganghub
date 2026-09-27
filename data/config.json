@@ -4,5 +4,19 @@
   "instansi": "BPS Kabupaten Bengkulu Tengah",
   "program": "Program Magang Nasional MagangHub Kemnaker · Batch 2 Tahun 2026",
   "tanggalMulai": "2026-09-21",
-  "tanggalSelesai": "2027-03-20"
+  "tanggalSelesai": "2027-03-20",
+  "fotoProfil": "",
+  "judulSitus": "",
+  "warnaTema": "#1a5cff",
+  "tampilkanLinkAdmin": false,
+  "footer": {
+    "teks": "",
+    "bagian": [
+      {
+        "judul": "Tentang",
+        "isi": "Dokumentasi kegiatan harian selama Program Magang Nasional di BPS Kabupaten Bengkulu Tengah."
+      }
+    ],
+    "tautan": []
+  }
 }
