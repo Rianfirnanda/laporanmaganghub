@@ -31,7 +31,7 @@ Langkah ini untuk yang baru menyalin repo. Cukup sekali.
 
 | Kapan | Yang dilakukan |
 | --- | --- |
-| Saat ada kegiatan | Buka panel, ketuk **Ambil foto**, isi judul kegiatan, lalu **Simpan**. |
+| Saat ada kegiatan | Buka panel, ketuk **Ambil foto**, isi judul kegiatan, lalu **Simpan**. Kalau ada masalah, tulis di kolom **Kendala** agar ikut masuk laporan harian. |
 | Sore sebelum absen | Buka tab **Laporan**. Laporan AI sudah siap. Salin tiga isiannya ke monev MagangHub. |
 | Sakit atau izin | Tab **Laporan**, pilih status **Sakit** atau **Izin**, tulis keterangan, lalu simpan. |
 | Akhir minggu | Di dasbor, buka **Laporan** atau **Slide**, pilih minggunya, lalu **Cetak** (bisa disimpan sebagai PDF). |
