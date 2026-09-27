@@ -1,3 +1,20 @@
 {
-  "langganan": []
+  "langganan": [
+    {
+      "id": "o3sDL0nK0WArZ9oz",
+      "perangkat": "Windows · Chrome",
+      "dibuat": "2026-09-27T15:11:51.325Z",
+      "diperbarui": "2026-09-27T15:11:51.325Z",
+      "kategori": {
+        "ai": true,
+        "data": true,
+        "sistem": true
+      },
+      "enc": {
+        "epk": "BBhfrC6Z0WxTAG7RaJrKnIKxIyvvGHgOC9fz4rFB7OOp_1vr6a7mAjzpgsW0tm4jvpyJ0wYp5QGRIeGeF-tpL-8",
+        "iv": "SygeCsRL66NA8XG7",
+        "data": "iCM9rCIOMFPH4PCsfaefbnm1FdynVBrmXR5Yq0o7mrlO3v3ukFtvIeHDUG-k3QCV9-dg9JG6wKS1OlrzSAa5tNvgud9kyM9mh2qtvo7fJIlDGZvzXh4Urquy8hyR4EsXPcEhI9SHYvVhy-C86ao9L69_HYyz3FwN61TXimIGhr27CxGuas_H2bSKQMtqvgv-LVGygpkkUJMFYYl66FXRPHtpqqgOmh-taaoabI8max_Bpmx6SwAVa-G-C2nj0UicydibntcCa3XsvQfTrpUIv_iPHcs2HUKq0ZfRrGruyin41vu5KihJhYGR0yiZKzFG17Yw927dgiiqPHd3ky3OHSS-WN7axr2_WV3Va_aTNcNjsWR7qw-XOBbkpsDZ4ZIrfIzyQzVBlA_YuAS54Ye1PI6T3uQnOKj6XNBZ9CngE1L849u0Fvjf4J4YkIBHngjma6wNnWEaqLeU4f_cvFBd8MvxSmgkfUc"
+      }
+    }
+  ]
 }
