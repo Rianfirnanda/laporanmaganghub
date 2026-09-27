@@ -83,14 +83,25 @@ function buildHarianPrompt({ config = {}, entries = [], harian = {}, date, statu
   ].join('\n');
 }
 
+// Minggu kalender Senin–Jumat (sama dengan common.js mingguKe).
+function aiUtc(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+function aiSenin(date) {
+  const t = aiUtc(date);
+  return t - ((new Date(t).getUTCDay() + 6) % 7) * 86400000;
+}
 function aiMingguKe(mulai, date) {
-  const [y1, m1, d1] = mulai.split('-').map(Number);
-  const [y2, m2, d2] = date.split('-').map(Number);
-  return Math.floor((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000 / 7) + 1;
+  return Math.round((aiSenin(date) - aiSenin(mulai)) / (7 * 86400000)) + 1;
+}
+function aiHariKerja(date) {
+  const d = new Date(aiUtc(date)).getUTCDay();
+  return d >= 1 && d <= 5;
 }
 
 function buildSummaryPrompt({ config = {}, entries = [], harian = {} }) {
-  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].filter(Boolean).sort();
+  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].filter(d => d && aiHariKerja(d)).sort();
   if (!dates.length) return null;
   const mulai = config.tanggalMulai || dates[0];
   const lastWeek = aiMingguKe(mulai, dates[dates.length - 1]);
@@ -124,6 +135,7 @@ function sumberHarian(entries, date) {
 // Laporan perlu (ditulis ulang) oleh AI? Tidak pernah menimpa hasil edit manual.
 function perluLaporanAi(entries, harian, date) {
   const rec = harian[date];
+  if (!aiHariKerja(date)) return false;   // monev hanya Senin–Jumat
   if (!aiDayEntries(entries, date).length) return false;
   if (!rec || !(rec.ringkasan || rec.pembelajaran || rec.kendala)) return true;
   if (rec.auto === false || ['Sakit', 'Izin'].includes(rec.status)) return false;

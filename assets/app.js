@@ -67,17 +67,19 @@ function renderProfile() {
   $('posisi').hidden = !CONFIG.posisi;
   $('instansi').textContent = CONFIG.instansi || '';
 
-  const total = daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1;
-  const now = Math.min(Math.max(hariKe(CONFIG, todayStr()), 0), total);
+  // Hanya hari kerja (Senin–Jumat) yang dihitung.
+  const total = totalHariKerja(CONFIG);
+  const today = wibParts(new Date()).tanggal;
+  const now = Math.min(Math.max(hariKe(CONFIG, today), 0), total);
   const pct = Math.round((now / total) * 100);
   const circ = 2 * Math.PI * 27;
   $('ringFg').style.strokeDasharray = circ;
   $('ringFg').style.strokeDashoffset = circ * (1 - pct / 100);
   $('ringText').textContent = `${pct}%`;
-  $('progressLabel').textContent = now > 0 ? `Hari ke-${now} dari ${total}` : 'Belum dimulai';
+  $('progressLabel').textContent = now > 0 ? `Hari kerja ke-${now} dari ${total}` : 'Belum dimulai';
   $('progressSub').textContent = now >= total
     ? 'Program magang selesai'
-    : now > 0 ? `Sisa ${total - now} hari · Minggu ke-${mingguKe(CONFIG, todayStr())}` : `Mulai ${formatTanggal(CONFIG.tanggalMulai, false)}`;
+    : now > 0 ? `Sisa ${total - now} hari kerja · Minggu ke-${mingguKe(CONFIG, today)}` : `Mulai ${formatTanggal(CONFIG.tanggalMulai, false)}`;
   $('progress').hidden = false;
 }
 
@@ -116,11 +118,12 @@ function renderSidebar() {
   $('mentorLogo').textContent = inisial(m.nama);
   $('mentorName').textContent = m.nama || '';
   $('mentorRole').textContent = m.jabatan || '';
-  const total = daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1;
+  const total = totalHariKerja(CONFIG);
   $('periode').innerHTML = [
     ['Mulai', formatTanggal(CONFIG.tanggalMulai, false)],
     ['Selesai', formatTanggal(CONFIG.tanggalSelesai, false)],
-    ['Durasi', `${total} hari · ${Math.ceil(total / 7)} minggu`]
+    ['Durasi', `${total} hari kerja · ${mingguKe(CONFIG, CONFIG.tanggalSelesai)} minggu`],
+    ['Hari kerja', 'Senin – Jumat']
   ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
 
   const latest = ENTRIES.reduce((m, e) => (`${e.tanggal} ${e.jam || ''}` > m ? `${e.tanggal} ${e.jam || ''}` : m), '');
@@ -131,31 +134,33 @@ function renderSidebar() {
 
 // Hari kerja (Senin–Jumat) sejak mulai magang sampai hari ini.
 function hariKerja(until) {
-  let n = 0;
-  const end = parseDate(until < CONFIG.tanggalSelesai ? until : CONFIG.tanggalSelesai);
-  for (let d = parseDate(CONFIG.tanggalMulai); d <= end; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() % 6 !== 0) n++;
-  }
-  return n;
+  return hitungHariKerja(CONFIG.tanggalMulai, until < CONFIG.tanggalSelesai ? until : CONFIG.tanggalSelesai);
+}
+
+// Kegiatan yang dihitung: hanya pada hari kerja (Senin–Jumat).
+function dihitung(list) {
+  return list.filter(e => isHariKerja(e.tanggal));
 }
 
 function renderKpis() {
   const today = wibParts(new Date()).tanggal;
-  const hariIni = ENTRIES.filter(e => e.tanggal === today).length;
-  const hari = new Set(ENTRIES.map(e => e.tanggal)).size;
-  const foto = ENTRIES.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
-  const sync = ENTRIES.reduce((n, e) => n + (e.foto || []).filter(safePath).filter(f => inDrive(e, f)).length, 0);
+  const KERJA = dihitung(ENTRIES);
+  const hariIni = KERJA.filter(e => e.tanggal === today).length;
+  const hari = new Set(KERJA.map(e => e.tanggal)).size;
+  const foto = KERJA.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+  const sync = KERJA.reduce((n, e) => n + (e.foto || []).filter(safePath).filter(f => inDrive(e, f)).length, 0);
   const kerja = hariKerja(today);
-  const sakit = Object.keys(HARIAN).filter(d => statusOf(d) === 'Sakit').length;
-  const izin = Object.keys(HARIAN).filter(d => statusOf(d) === 'Izin').length;
-  const hadir = new Set(ENTRIES.map(e => e.tanggal).filter(d => statusOf(d) === 'Hadir')).size;
+  const libur = Object.keys(HARIAN).filter(isHariKerja);
+  const sakit = libur.filter(d => statusOf(d) === 'Sakit').length;
+  const izin = libur.filter(d => statusOf(d) === 'Izin').length;
+  const hadir = new Set(KERJA.map(e => e.tanggal).filter(d => statusOf(d) === 'Hadir')).size;
   const pct = kerja ? Math.min(100, Math.round(hari / kerja * 100)) : 0;
   const kpi = (ic, value, label, sub, cls = '') => `<div class="kpi ${cls}">
     <span class="kpi-icon">${icon(ic)}</span>
     <div><strong>${value}</strong><span class="kpi-label">${label}</span><small>${sub}</small></div>
   </div>`;
   $('kpis').innerHTML = [
-    kpi('grid', ENTRIES.length, 'Kegiatan', hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
+    kpi('grid', KERJA.length, 'Kegiatan', !isHariKerja(today) ? 'Akhir pekan · tidak dihitung' : hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
     kpi('calendar', hari, 'Hari terdokumentasi', kerja ? `${pct}% dari ${kerja} hari kerja` : 'Belum dimulai'),
     kpi('image', foto, 'Foto dokumentasi', foto ? `${sync === foto ? 'Semua' : `${sync} dari ${foto}`} di Google Drive` : 'Belum ada foto'),
     kpi('badge', hadir, 'Hari hadir', sakit || izin ? `Sakit ${sakit} · Izin ${izin}` : 'Tanpa sakit/izin')
@@ -357,7 +362,7 @@ function render() {
   const nFoto = list.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
   $('resultInfo').textContent = active
     ? `${list.length} dari ${ENTRIES.length} kegiatan · ${nFoto} foto`
-    : `${ENTRIES.length} kegiatan · ${new Set(ENTRIES.map(e => e.tanggal)).size} hari · ${nFoto} foto`;
+    : `${dihitung(ENTRIES).length} kegiatan · ${new Set(dihitung(ENTRIES).map(e => e.tanggal)).size} hari kerja · ${nFoto} foto`;
   const wk = Number(week) || (allDates().length ? mingguKe(CONFIG, allDates().sort().pop()) : 0);
   $('reportNote').textContent = wk
     ? `Minggu ke-${wk} (${weekLabel(wk)}). Pilih minggu lain lewat filter.`
@@ -418,7 +423,7 @@ function renderHarian(list) {
   if (!list.length && !absent.length) { $('view-harian').innerHTML = noMatch(); return; }
   let html = '';
   for (const [w, days] of groupByWeek(list, absent)) {
-    const nWeek = [...days.values()].reduce((n, x) => n + x.length, 0);
+    const nWeek = [...days].filter(([d]) => isHariKerja(d)).reduce((n, [, x]) => n + x.length, 0);
     html += `<div class="week-label"><span>Minggu ke-${w}</span><small>${weekLabel(w)} · ${nWeek} kegiatan</small></div>`;
     for (const [tgl, items] of days) {
       const nFoto = items.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
@@ -427,7 +432,7 @@ function renderHarian(list) {
           <span class="head-icon">${icon('calendar')}</span>
           <div class="head-text">
             <h3>${formatTanggal(tgl)}</h3>
-            <span>Hari ke-${hariKe(CONFIG, tgl)}${items.length ? ` · ${items.length} kegiatan · ${nFoto} foto` : ''}</span>
+            <span>${isHariKerja(tgl) ? `Hari kerja ke-${hariKe(CONFIG, tgl)}` : 'Akhir pekan · tidak dihitung'}${items.length ? ` · ${items.length} kegiatan · ${nFoto} foto` : ''}</span>
           </div>
           <div class="day-actions">
             ${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span>`
@@ -517,8 +522,12 @@ function renderRekap(list) {
   if (!list.length && !absent.length) { $('view-rekap').innerHTML = noMatch(); return; }
   let html = '';
   for (const [w, days] of groupByWeek(list, absent)) {
-    const all = [...days.values()].flat();
+    // Hanya Senin–Jumat yang dihitung; kegiatan akhir pekan tetap tercantum.
+    const kerjaDays = [...days].filter(([d]) => isHariKerja(d));
+    const all = kerjaDays.map(([, x]) => x).flat();
     const foto = all.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+    const { start, end } = rentangMinggu(CONFIG, w);
+    const jatah = hitungHariKerja(toDateStr(start), toDateStr(end));
     html += `<article class="card week-card">
       <header class="card-header">
         <span class="head-icon">${icon('history')}</span>
@@ -526,13 +535,13 @@ function renderRekap(list) {
       </header>
       <div class="card-body">
         <div class="pills">
-          <span class="pill">${days.size} hari</span>
+          <span class="pill">${kerjaDays.length} dari ${jatah} hari kerja</span>
           <span class="pill">${all.length} kegiatan</span>
           <span class="pill">${foto} foto</span>
         </div>
         <ul class="recap-list">${[...days].map(([tgl, items]) => `<li>
           <strong>${esc(formatTanggal(tgl))}</strong>
-          <span>${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span> ` : ''}${items.map(e => esc(e.judul)).join(' · ')}</span>
+          <span>${!isHariKerja(tgl) ? '<span class="pill">Akhir pekan · tidak dihitung</span> ' : ''}${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span> ` : ''}${items.map(e => esc(e.judul)).join(' · ')}</span>
         </li>`).join('')}</ul>
         <div class="actions">
           <button class="btn btn-primary btn-sm" type="button" data-week="${w}">${icon('eye')} Lihat detail</button>
