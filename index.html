@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laporan Kegiatan Magang</title>
+  <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="container hero-inner">
+      <div class="profile">
+        <div class="avatar" id="avatar">–</div>
+        <div>
+          <h1 id="nama">Memuat…</h1>
+          <div class="chips">
+            <span class="chip chip-solid" id="posisi"></span>
+            <span class="chip-text" id="instansi"></span>
+          </div>
+          <p class="program" id="program"></p>
+        </div>
+      </div>
+      <div class="progress" id="progress" hidden>
+        <div class="progress-text">
+          <span class="progress-label" id="progressLabel"></span>
+          <span class="progress-sub" id="progressSub"></span>
+        </div>
+        <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="27" class="ring-bg"/>
+          <circle cx="32" cy="32" r="27" class="ring-fg" id="ringFg"/>
+          <text x="32" y="36" text-anchor="middle" id="ringText">0%</text>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="stats" id="stats"></section>
+
+    <section class="toolbar">
+      <label class="field">
+        <span>Minggu</span>
+        <select id="filterMinggu"><option value="">Semua minggu</option></select>
+      </label>
+      <label class="field">
+        <span>Tanggal</span>
+        <input type="date" id="filterTanggal">
+      </label>
+      <label class="field grow">
+        <span>Cari kegiatan</span>
+        <input type="search" id="filterCari" placeholder="Ketik kata kunci…">
+      </label>
+      <button class="btn btn-ghost" id="btnReset" type="button">Reset</button>
+      <button class="btn btn-primary" id="btnPrint" type="button">Cetak laporan</button>
+    </section>
+
+    <section id="timeline" aria-live="polite">
+      <p class="empty">Memuat kegiatan…</p>
+    </section>
+  </main>
+
+  <footer class="footer container">
+    <span id="footerText"></span>
+    <a href="admin.html" class="admin-link">Panel admin</a>
+  </footer>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lb-close" id="lbClose" aria-label="Tutup">×</button>
+    <button class="lb-nav lb-prev" id="lbPrev" aria-label="Sebelumnya">‹</button>
+    <figure>
+      <img id="lbImg" alt="">
+      <figcaption id="lbCap"></figcaption>
+    </figure>
+    <button class="lb-nav lb-next" id="lbNext" aria-label="Berikutnya">›</button>
+  </div>
+
+  <script src="assets/common.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
