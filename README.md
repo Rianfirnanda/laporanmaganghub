@@ -4,14 +4,19 @@ Website dokumentasi kegiatan harian magang (Program Magang Nasional MagangHub Ke
 yang di-hosting gratis di **GitHub Pages**. Foto dan keterangan kegiatan ditambahkan
 lewat **panel admin** (`admin.html`) langsung dari browser/HP, tanpa server atau database.
 
-- `index.html`: halaman publik. Kegiatan dikelompokkan per **minggu** lalu per **hari**
-  (pagi / siang / sore), dengan filter minggu, tanggal, dan pencarian, galeri foto, serta
-  tombol **Cetak laporan** (bisa disimpan sebagai PDF untuk laporan mingguan).
+- `index.html`: halaman publik bergaya dasbor (navbar, hero profil dengan progres "Hari ke-X",
+  tab, dan sidebar info instansi & mentor). Terdiri dari tiga tampilan:
+  - **Kegiatan Harian**: kegiatan per minggu, per hari, dan per jam (pagi/siang/sore) beserta foto.
+  - **Galeri Foto**: semua foto kegiatan.
+  - **Rekap Mingguan**: ringkasan tiap minggu dengan tombol lihat detail dan cetak.
+
+  Tersedia filter minggu, tanggal, dan pencarian, serta tombol **Cetak Laporan** (bisa disimpan
+  sebagai PDF). Tampilan responsif untuk HP dan laptop.
 - `admin.html`: panel yang dikunci dengan kata sandi, terdiri dari tiga tab:
   - **Kegiatan**: tambah, edit, dan hapus kegiatan serta foto. Foto otomatis diperkecil
     (maks. 1600px, JPEG) dan metadata-nya (termasuk lokasi GPS) dibuang.
-  - **Profil & Tampilan**: foto profil, nama, posisi, instansi, tanggal magang, judul tab,
-    warna tema, serta isi footer (bagian bebas seperti Tentang/Mentor/Kontak dan daftar tautan).
+  - **Profil & Tampilan**: foto profil, nama, posisi, instansi, tanggal magang, mentor pembimbing,
+    judul tab, warna tema, serta isi footer (bagian bebas seperti Tentang/Kontak dan daftar tautan).
   - **Keamanan**: status koneksi, ganti kata sandi panel, dan hapus token dari perangkat.
 
   Setiap penyimpanan menjadi **satu commit** di repository ini (`data/`, `uploads/`).
@@ -40,6 +45,14 @@ lewat **panel admin** (`admin.html`) langsung dari browser/HP, tanpa server atau
 
 Untuk pemeriksaan mingguan, kirim tautan dengan filter minggu, misalnya
 `https://<username>.github.io/laporanmaganghub/?minggu=3`, atau gunakan **Cetak laporan → Simpan sebagai PDF**.
+
+## Jika tampilan berantakan setelah pembaruan
+
+GitHub Pages menyimpan cache file CSS/JS di browser sekitar 10 menit. Setiap file CSS/JS dimuat dengan
+penanda versi (`style.css?v=3`), jadi browser otomatis mengambil versi baru. Kalau tampilan masih aneh,
+tekan **Ctrl + F5** (atau **Cmd + Shift + R** di Mac) sekali untuk memuat ulang tanpa cache.
+
+Untuk pengembang: setiap kali mengubah file di `assets/`, naikkan angka `?v=` di `index.html` dan `admin.html`.
 
 ## Mengubah profil dan tampilan
 

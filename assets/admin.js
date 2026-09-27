@@ -162,6 +162,27 @@ function rawUrl(path) {
 function show(id) {
   ['authSetup', 'authUnlock', 'app'].forEach(x => { $(x).hidden = x !== id; });
   $('btnLock').hidden = id !== 'app';
+  $('tabbar').hidden = id !== 'app';
+  renderHero(id === 'app');
+}
+
+// Hero menampilkan identitas pemilik setelah panel terbuka.
+function renderHero(open) {
+  const box = $('heroAvatar');
+  const foto = open && rawUrl(CFG && CFG.fotoProfil);
+  if (foto) {
+    const img = document.createElement('img');
+    img.src = foto;
+    img.alt = '';
+    box.replaceChildren(img);
+  } else if (open && CFG && CFG.nama) {
+    box.textContent = inisial(CFG.nama);
+  } else {
+    box.innerHTML = icon('lock');
+  }
+  $('heroTitle').textContent = open && CFG && CFG.nama ? CFG.nama : 'Panel Admin';
+  $('heroBadge').textContent = open ? 'Panel Admin' : 'Laporan Magang';
+  $('heroSub').textContent = open ? `${S.owner}/${S.repo} · branch ${S.branch}` : 'Kelola dokumentasi kegiatan harian';
 }
 
 function showSetup(note) {
@@ -179,7 +200,7 @@ function showUnlock() {
   $('unlockRepo').textContent = `${S.owner}/${S.repo} · branch ${S.branch}`;
   $('uPass').value = '';
   show('authUnlock');
-  $('uPass').focus();
+  $('uPass').focus({ preventScroll: true });
 }
 
 async function verifyConnection() {
@@ -284,10 +305,13 @@ setInterval(() => {
 }, 20000);
 
 // ================= Tab =================
-document.querySelector('.tabs').addEventListener('click', ev => {
+$('tabbar').addEventListener('click', ev => {
   const btn = ev.target.closest('[data-tab]');
   if (!btn) return;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+  document.querySelectorAll('.tabbar-item').forEach(t => {
+    t.classList.toggle('active', t === btn);
+    t.setAttribute('aria-selected', String(t === btn));
+  });
   document.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== btn.dataset.tab; });
 });
 
@@ -348,9 +372,9 @@ function addFiles(files) {
 
 function renderPreviews() {
   const kept = keptPhotos.map((p, i) =>
-    `<div class="preview"><img src="${esc(rawUrl(p))}" alt=""><button type="button" data-kept="${i}" title="Hapus foto">×</button></div>`);
+    `<div class="preview"><img src="${esc(rawUrl(p))}" alt=""><button type="button" data-kept="${i}" title="Hapus foto">${icon('x')}</button></div>`);
   const fresh = newPhotos.map((p, i) =>
-    `<div class="preview new"><img src="${esc(p.url)}" alt=""><button type="button" data-new="${i}" title="Batal">×</button></div>`);
+    `<div class="preview new"><img src="${esc(p.url)}" alt=""><button type="button" data-new="${i}" title="Batal">${icon('x')}</button></div>`);
   $('previews').innerHTML = kept.concat(fresh).join('');
 }
 
@@ -385,6 +409,7 @@ function resetForm() {
   $('btnCancelEdit').hidden = true;
   $('btnSave').textContent = 'Simpan kegiatan';
   renderPreviews();
+  renderList();
 }
 
 function startEdit(id) {
@@ -403,6 +428,7 @@ function startEdit(id) {
   $('btnCancelEdit').hidden = false;
   $('btnSave').textContent = 'Simpan perubahan';
   renderPreviews();
+  renderList();
   $('cardForm').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -481,6 +507,8 @@ async function deleteEntry(id) {
 function renderList() {
   const q = $('listCari').value.trim().toLowerCase();
   const list = sortEntries(entries).filter(e => !q || `${e.judul} ${e.keterangan} ${e.tanggal}`.toLowerCase().includes(q));
+  const hari = new Set(entries.map(e => e.tanggal)).size;
+  $('listCount').textContent = `${entries.length} kegiatan · ${hari} hari`;
   if (!list.length) {
     $('entryList').innerHTML = `<p class="empty">${entries.length ? 'Tidak ada yang cocok.' : 'Belum ada kegiatan.'}</p>`;
     return;
@@ -490,16 +518,17 @@ function renderList() {
     const head = e.tanggal !== lastDate ? `<h3 class="list-date">${esc(formatTanggal(e.tanggal))}</h3>` : '';
     lastDate = e.tanggal;
     const first = rawUrl((e.foto || [])[0]);
-    const thumb = first ? `<img src="${esc(first)}" alt="" loading="lazy">` : '<div class="no-thumb">—</div>';
-    return `${head}<div class="list-item">
+    const thumb = first ? `<img src="${esc(first)}" alt="" loading="lazy">` : `<div class="no-thumb">${icon('image')}</div>`;
+    const sesi = ['Pagi', 'Siang', 'Sore'].includes(e.sesi) ? e.sesi : sesiDariJam(e.jam);
+    return `${head}<div class="list-item${e.id === editingId ? ' editing' : ''}">
       ${thumb}
       <div class="list-info">
         <strong>${esc(e.judul)}</strong>
-        <span>${esc(e.jam || '')} · ${esc(e.sesi || sesiDariJam(e.jam))} · ${(e.foto || []).length} foto</span>
+        <span><span class="sesi sesi-${sesi.toLowerCase()}">${sesi}</span> ${esc(e.jam || '')} · ${(e.foto || []).length} foto</span>
       </div>
       <div class="list-actions">
-        <button class="btn btn-ghost btn-sm" data-edit="${esc(e.id)}">Edit</button>
-        <button class="btn btn-danger btn-sm" data-del="${esc(e.id)}">Hapus</button>
+        <button class="icon-btn" type="button" data-edit="${esc(e.id)}" title="Edit">${icon('edit')}</button>
+        <button class="icon-btn danger" type="button" data-del="${esc(e.id)}" title="Hapus">${icon('trash')}</button>
       </div>
     </div>`;
   }).join('');
@@ -520,6 +549,7 @@ async function loadConfig() {
   try {
     CFG = await readRepoJSON(CONFIG_PATH, S.branch, {});
     fillConfigForm();
+    renderHero(true);
   } catch (e) {
     toast(`Gagal memuat pengaturan: ${e.message}`, true);
   }
@@ -534,6 +564,8 @@ function fillConfigForm() {
   $('cProgram').value = c.program || '';
   $('cMulai').value = c.tanggalMulai || '';
   $('cSelesai').value = c.tanggalSelesai || '';
+  $('cMentorNama').value = (c.mentor && c.mentor.nama) || '';
+  $('cMentorJabatan').value = (c.mentor && c.mentor.jabatan) || '';
   $('cJudul').value = c.judulSitus || '';
   $('cWarna').value = safeColor(c.warnaTema);
   applyTheme(c.warnaTema);
@@ -581,7 +613,20 @@ function addRow(listId, tplId, values = {}) {
 }));
 $('btnAddSection').addEventListener('click', () => addRow('cSections', 'tplSection').querySelector('input').focus());
 $('btnAddLink').addEventListener('click', () => addRow('cLinks', 'tplLink').querySelector('input').focus());
-$('cWarna').addEventListener('input', () => { $('cWarnaText').textContent = $('cWarna').value; });
+// Pratinjau warna langsung di panel; pilihan cepat sesuai palet umum.
+const SWATCHES = ['#1d4ed8', '#0f766e', '#15803d', '#7c3aed', '#be123c', '#c2410c', '#0f172a'];
+$('swatches').innerHTML = SWATCHES.map(c =>
+  `<button type="button" class="swatch swatch-${c.slice(1)}" data-color="${c}" title="${c}"></button>`).join('');
+$('swatches').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-color]');
+  if (!b) return;
+  $('cWarna').value = b.dataset.color;
+  $('cWarna').dispatchEvent(new Event('input'));
+});
+$('cWarna').addEventListener('input', () => {
+  $('cWarnaText').textContent = $('cWarna').value;
+  applyTheme($('cWarna').value);
+});
 $('cNama').addEventListener('input', renderAvatar);
 
 $('cfgFoto').addEventListener('change', ev => {
@@ -619,6 +664,7 @@ function readConfigForm() {
     program: $('cProgram').value.trim(),
     tanggalMulai: $('cMulai').value,
     tanggalSelesai: $('cSelesai').value,
+    mentor: { nama: $('cMentorNama').value.trim(), jabatan: $('cMentorJabatan').value.trim() },
     judulSitus: $('cJudul').value.trim(),
     warnaTema: safeColor($('cWarna').value),
     tampilkanLinkAdmin: $('cAdminLink').checked,
@@ -659,6 +705,7 @@ $('formConfig').addEventListener('submit', async ev => {
     await commit('Perbarui profil dan tampilan website', async () => changes);
     CFG = cfg;
     fillConfigForm();
+    renderHero(true);
     toast('Pengaturan tersimpan. Website diperbarui dalam ±1 menit.');
   }, 'configMsg');
 });

@@ -6,79 +6,120 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#163ba2">
   <title>Panel Admin · Laporan Magang</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Crect x='20' y='28' width='24' height='20' rx='3' fill='white'/%3E%3Cpath d='M25 28v-5a7 7 0 0 1 14 0v5' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
+  <link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body class="admin">
-  <header class="topbar">
-    <div class="container topbar-inner">
-      <strong>Panel Admin · Laporan Magang</strong>
-      <div class="topbar-actions">
-        <button class="btn btn-ghost btn-sm" type="button" id="btnLock" hidden>🔒 Kunci</button>
-        <a href="./" class="btn btn-ghost btn-sm">← Lihat website</a>
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="./">
+        <span class="brand-mark"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></span>
+        <span class="brand-text">Laporan<b>magang</b></span>
+        <span class="brand-tag">Admin</span>
+      </a>
+      <div class="nav-right">
+        <button class="btn btn-light btn-sm" type="button" id="btnLock" hidden>
+          <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><span class="hide-xs">Kunci</span>
+        </button>
+        <a href="./" class="btn btn-outline btn-sm">
+          <span class="hide-xs">Lihat website</span><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero hero-sm">
+    <div class="container hero-inner">
+      <div class="profile">
+        <div class="avatar" id="heroAvatar"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></div>
+        <div class="profile-text">
+          <h1 id="heroTitle">Panel Admin</h1>
+          <div class="chips">
+            <span class="badge-pill" id="heroBadge">Laporan Magang</span>
+            <span class="hero-sub" id="heroSub">Kelola dokumentasi kegiatan harian</span>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="container admin-main">
+  <div class="tabbar" id="tabbar" hidden>
+    <div class="container tabbar-inner" role="tablist">
+      <button type="button" role="tab" class="tabbar-item active" data-tab="kegiatan">
+        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Kegiatan
+      </button>
+      <button type="button" role="tab" class="tabbar-item" data-tab="profil">
+        <svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Profil &amp; Tampilan
+      </button>
+      <button type="button" role="tab" class="tabbar-item" data-tab="keamanan">
+        <svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg> Keamanan
+      </button>
+    </div>
+  </div>
+
+  <main class="container page">
     <!-- ===== Masuk: pertama kali (atur token + kata sandi) ===== -->
     <section class="card auth-card" id="authSetup" hidden>
-      <h2>Hubungkan ke GitHub</h2>
-      <p class="hint" id="setupNote">Masukkan token GitHub lalu buat kata sandi panel. Token akan dienkripsi dengan kata sandi ini sebelum disimpan di perangkat.</p>
-      <form id="formSetup" class="form" autocomplete="off">
-        <div class="row">
-          <label class="field"><span>Username / owner</span><input id="sOwner" required pattern="[A-Za-z0-9._\-]+"></label>
-          <label class="field"><span>Nama repository</span><input id="sRepo" required pattern="[A-Za-z0-9._\-]+"></label>
-          <label class="field"><span>Branch</span><input id="sBranch" value="main" required></label>
-        </div>
-        <label class="field">
-          <span>Token GitHub (fine-grained, hanya repo ini, izin <em>Contents: Read and write</em>)</span>
-          <input id="sToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" required>
-        </label>
-        <div class="row row-2">
-          <label class="field"><span>Kata sandi panel (min. 8 karakter)</span><input id="sPass" type="password" autocomplete="new-password" minlength="8" required></label>
-          <label class="field"><span>Ulangi kata sandi</span><input id="sPass2" type="password" autocomplete="new-password" minlength="8" required></label>
-        </div>
-        <div class="actions">
-          <button class="btn btn-primary" type="submit" id="btnSetup">Simpan &amp; hubungkan</button>
-        </div>
-      </form>
+      <div class="card-header">
+        <span class="head-icon">
+          <svg class="ic" aria-hidden="true"><use href="#i-link"/></svg>
+        </span>
+        <div class="head-text"><h3>Hubungkan ke GitHub</h3><span>Pengaturan pertama di perangkat ini</span></div>
+      </div>
+      <div class="card-body">
+        <p class="note" id="setupNote">Masukkan token GitHub lalu buat kata sandi panel. Token akan dienkripsi dengan kata sandi ini sebelum disimpan di perangkat.</p>
+        <form id="formSetup" class="form" autocomplete="off">
+          <div class="row">
+            <label class="field"><span>Username / owner</span><input id="sOwner" required pattern="[A-Za-z0-9._\-]+"></label>
+            <label class="field"><span>Nama repository</span><input id="sRepo" required pattern="[A-Za-z0-9._\-]+"></label>
+            <label class="field"><span>Branch</span><input id="sBranch" value="main" required></label>
+          </div>
+          <label class="field">
+            <span>Token GitHub (fine-grained, izin <em>Contents: Read and write</em>)</span>
+            <input id="sToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" required>
+          </label>
+          <div class="row row-2">
+            <label class="field"><span>Kata sandi panel (min. 8 karakter)</span><input id="sPass" type="password" autocomplete="new-password" minlength="8" required></label>
+            <label class="field"><span>Ulangi kata sandi</span><input id="sPass2" type="password" autocomplete="new-password" minlength="8" required></label>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" type="submit" id="btnSetup">Simpan &amp; hubungkan</button>
+          </div>
+        </form>
+      </div>
     </section>
 
     <!-- ===== Masuk: buka kunci ===== -->
-    <section class="card auth-card" id="authUnlock" hidden>
-      <div class="lock-icon" aria-hidden="true">🔒</div>
-      <h2>Panel terkunci</h2>
-      <p class="hint" id="unlockRepo"></p>
-      <form id="formUnlock" class="form" autocomplete="off">
-        <label class="field"><span>Kata sandi panel</span><input id="uPass" type="password" autocomplete="current-password" required autofocus></label>
-        <div class="actions">
-          <button class="btn btn-primary" type="submit" id="btnUnlock">Buka panel</button>
+    <section class="card auth-card auth-unlock" id="authUnlock" hidden>
+      <div class="card-body">
+        <span class="lock-badge"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <h2>Panel terkunci</h2>
+        <p class="muted" id="unlockRepo"></p>
+        <form id="formUnlock" class="form" autocomplete="off">
+          <label class="field"><span>Kata sandi panel</span><input id="uPass" type="password" autocomplete="current-password" required></label>
+          <button class="btn btn-primary btn-block" type="submit" id="btnUnlock">Buka panel</button>
           <button class="btn btn-link" type="button" id="btnForgot">Lupa kata sandi?</button>
-        </div>
-      </form>
+        </form>
+      </div>
     </section>
 
     <!-- ===== Aplikasi (hanya tampil setelah terbuka) ===== -->
     <div id="app" hidden>
-      <nav class="tabs" role="tablist">
-        <button type="button" role="tab" class="tab active" data-tab="kegiatan">Kegiatan</button>
-        <button type="button" role="tab" class="tab" data-tab="profil">Profil &amp; Tampilan</button>
-        <button type="button" role="tab" class="tab" data-tab="keamanan">Keamanan</button>
-      </nav>
-
       <!-- ---------- Tab Kegiatan ---------- -->
-      <div class="panel" data-panel="kegiatan">
+      <div class="panel admin-layout" data-panel="kegiatan">
         <section class="card" id="cardForm">
-          <div class="card-head">
-            <h2 id="formTitle">Tambah kegiatan</h2>
-            <button class="btn btn-ghost btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
+          <div class="card-header">
+            <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></span>
+            <div class="head-text"><h3 id="formTitle">Tambah kegiatan</h3><span>Foto dan keterangan kegiatan hari ini</span></div>
+            <button class="btn btn-light btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
           </div>
-          <form id="formEntry" class="form">
+          <form id="formEntry" class="form card-body">
             <div class="row">
               <label class="field"><span>Tanggal</span><input type="date" id="fTanggal" required></label>
               <label class="field"><span>Jam</span><input type="time" id="fJam" required></label>
@@ -99,8 +140,9 @@
               <span>Foto dokumentasi</span>
               <label class="dropzone" id="dropzone">
                 <input type="file" id="fFoto" accept="image/*" multiple>
+                <span class="dz-icon"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg></span>
                 <strong>Pilih atau seret foto ke sini</strong>
-                <small>Foto otomatis diperkecil (maks. 1600px) sebelum diunggah.</small>
+                <small>Bisa banyak foto sekaligus. Otomatis diperkecil (maks. 1600px).</small>
               </label>
               <div class="previews" id="previews"></div>
             </div>
@@ -111,114 +153,156 @@
           </form>
         </section>
 
-        <section class="card">
-          <div class="card-head">
-            <h2>Daftar kegiatan</h2>
-            <input type="search" id="listCari" placeholder="Cari…" class="input-sm">
+        <section class="card list-card">
+          <div class="card-header">
+            <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg></span>
+            <div class="head-text"><h3>Daftar kegiatan</h3><span id="listCount">Memuat…</span></div>
           </div>
-          <div id="entryList"><p class="empty">Memuat…</p></div>
+          <div class="card-body">
+            <label class="search-box">
+              <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+              <input type="search" id="listCari" placeholder="Cari kegiatan…">
+            </label>
+            <div id="entryList"><p class="empty">Memuat…</p></div>
+          </div>
         </section>
       </div>
 
       <!-- ---------- Tab Profil & Tampilan ---------- -->
       <div class="panel" data-panel="profil" hidden>
-        <form id="formConfig" class="stack">
-          <section class="card">
-            <h2 class="card-title">Profil</h2>
-            <div class="profile-edit">
-              <div class="avatar avatar-lg" id="cfgAvatar">–</div>
-              <div class="profile-edit-actions">
-                <label class="btn btn-ghost btn-sm file-btn">
-                  Ganti foto profil
-                  <input type="file" id="cfgFoto" accept="image/*">
-                </label>
-                <button type="button" class="btn btn-danger btn-sm" id="cfgFotoHapus">Hapus foto</button>
-                <small class="hint">Foto otomatis dipotong persegi (480×480).</small>
-              </div>
+        <form id="formConfig">
+          <div class="admin-layout">
+            <div class="stack">
+              <section class="card">
+                <div class="card-header">
+                  <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span>
+                  <div class="head-text"><h3>Profil</h3><span>Ditampilkan di bagian atas website</span></div>
+                </div>
+                <div class="card-body form">
+                  <div class="profile-edit">
+                    <div class="avatar avatar-lg" id="cfgAvatar"></div>
+                    <div class="profile-edit-actions">
+                      <label class="btn btn-outline btn-sm file-btn">
+                        <svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Ganti foto profil
+                        <input type="file" id="cfgFoto" accept="image/*">
+                      </label>
+                      <button type="button" class="btn btn-danger btn-sm" id="cfgFotoHapus">
+                        <svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg> Hapus
+                      </button>
+                      <small class="muted">Foto otomatis dipotong persegi (480×480).</small>
+                    </div>
+                  </div>
+                  <label class="field"><span>Nama lengkap</span><input id="cNama" required maxlength="80"></label>
+                  <div class="row row-2">
+                    <label class="field"><span>Posisi</span><input id="cPosisi" maxlength="80"></label>
+                    <label class="field"><span>Instansi</span><input id="cInstansi" maxlength="100"></label>
+                  </div>
+                  <label class="field"><span>Keterangan program</span><input id="cProgram" maxlength="160"></label>
+                  <div class="row row-2">
+                    <label class="field"><span>Tanggal mulai magang</span><input type="date" id="cMulai" required></label>
+                    <label class="field"><span>Tanggal selesai magang</span><input type="date" id="cSelesai" required></label>
+                  </div>
+                  <div class="row row-2">
+                    <label class="field"><span>Nama mentor pembimbing (opsional)</span><input id="cMentorNama" maxlength="80"></label>
+                    <label class="field"><span>Jabatan mentor</span><input id="cMentorJabatan" maxlength="100"></label>
+                  </div>
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-header">
+                  <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg></span>
+                  <div class="head-text"><h3>Tampilan</h3><span>Warna dan judul website</span></div>
+                </div>
+                <div class="card-body form">
+                  <label class="field"><span>Judul tab browser (kosongkan untuk otomatis)</span><input id="cJudul" maxlength="100" placeholder="Laporan Magang · Nama Anda"></label>
+                  <div class="field">
+                    <span>Warna tema</span>
+                    <div class="color-field">
+                      <input type="color" id="cWarna" aria-label="Pilih warna tema">
+                      <code id="cWarnaText"></code>
+                      <div class="swatches" id="swatches"></div>
+                    </div>
+                  </div>
+                  <label class="switch-row">
+                    <input type="checkbox" id="cAdminLink">
+                    <span class="switch" aria-hidden="true"></span>
+                    <span>Tampilkan tautan "Panel admin" di footer website</span>
+                  </label>
+                </div>
+              </section>
             </div>
-            <div class="form">
-              <label class="field"><span>Nama lengkap</span><input id="cNama" required maxlength="80"></label>
-              <div class="row row-2">
-                <label class="field"><span>Posisi</span><input id="cPosisi" maxlength="80"></label>
-                <label class="field"><span>Instansi</span><input id="cInstansi" maxlength="100"></label>
-              </div>
-              <label class="field"><span>Keterangan program</span><input id="cProgram" maxlength="160"></label>
-              <div class="row row-2">
-                <label class="field"><span>Tanggal mulai magang</span><input type="date" id="cMulai" required></label>
-                <label class="field"><span>Tanggal selesai magang</span><input type="date" id="cSelesai" required></label>
-              </div>
-            </div>
-          </section>
 
-          <section class="card">
-            <h2 class="card-title">Tampilan</h2>
-            <div class="form">
-              <label class="field"><span>Judul tab browser (kosongkan untuk otomatis)</span><input id="cJudul" maxlength="100" placeholder="Laporan Magang · Nama Anda"></label>
-              <div class="row row-2">
-                <label class="field"><span>Warna tema</span>
-                  <span class="color-field"><input type="color" id="cWarna"><code id="cWarnaText"></code></span>
-                </label>
-                <label class="field check">
-                  <input type="checkbox" id="cAdminLink">
-                  <span>Tampilkan tautan "Panel admin" di footer website</span>
-                </label>
+            <section class="card">
+              <div class="card-header">
+                <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-link"/></svg></span>
+                <div class="head-text"><h3>Footer</h3><span>Bagian bawah website</span></div>
               </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <h2 class="card-title">Footer</h2>
-            <div class="form">
-              <label class="field"><span>Teks baris bawah (kosongkan untuk "© tahun nama · instansi")</span><input id="cFooterTeks" maxlength="200"></label>
-
-              <div class="field">
-                <span>Bagian footer (misalnya Tentang, Mentor, Kontak, Jam kerja)</span>
-                <div id="cSections" class="repeat-list"></div>
-                <button type="button" class="btn btn-ghost btn-sm" id="btnAddSection">+ Tambah bagian</button>
+              <div class="card-body form">
+                <label class="field"><span>Teks baris bawah (kosongkan untuk "© tahun nama · instansi")</span><input id="cFooterTeks" maxlength="200"></label>
+                <div class="field">
+                  <span>Bagian footer (misalnya Tentang, Kontak, Jam Kerja)</span>
+                  <div id="cSections" class="repeat-list"></div>
+                  <button type="button" class="btn btn-light btn-sm" id="btnAddSection"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Tambah bagian</button>
+                </div>
+                <label class="field"><span>Judul kolom tautan</span><input id="cJudulTautan" maxlength="40" placeholder="Tautan"></label>
+                <div class="field">
+                  <span>Tautan (https://, mailto:, tel:)</span>
+                  <div id="cLinks" class="repeat-list"></div>
+                  <button type="button" class="btn btn-light btn-sm" id="btnAddLink"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Tambah tautan</button>
+                </div>
               </div>
+            </section>
+          </div>
 
-              <label class="field"><span>Judul kolom tautan</span><input id="cJudulTautan" maxlength="40" placeholder="Tautan"></label>
-              <div class="field">
-                <span>Tautan (http/https, mailto:, tel:)</span>
-                <div id="cLinks" class="repeat-list"></div>
-                <button type="button" class="btn btn-ghost btn-sm" id="btnAddLink">+ Tambah tautan</button>
-              </div>
-            </div>
-          </section>
-
-          <div class="actions sticky-actions">
-            <button class="btn btn-primary" type="submit" id="btnSaveConfig">Simpan pengaturan</button>
-            <button class="btn btn-ghost" type="button" id="btnResetConfig">Batalkan perubahan</button>
+          <div class="save-bar">
             <span class="progress-msg" id="configMsg"></span>
+            <button class="btn btn-outline" type="button" id="btnResetConfig">Batalkan</button>
+            <button class="btn btn-primary" type="submit" id="btnSaveConfig">Simpan pengaturan</button>
           </div>
         </form>
       </div>
 
       <!-- ---------- Tab Keamanan ---------- -->
       <div class="panel" data-panel="keamanan" hidden>
-        <section class="card">
-          <h2 class="card-title">Status</h2>
-          <dl class="kv" id="secInfo"></dl>
-        </section>
-
-        <section class="card">
-          <h2 class="card-title">Ganti kata sandi panel</h2>
-          <form id="formPass" class="form" autocomplete="off">
-            <label class="field"><span>Kata sandi saat ini</span><input id="pOld" type="password" autocomplete="current-password" required></label>
-            <div class="row row-2">
-              <label class="field"><span>Kata sandi baru (min. 8 karakter)</span><input id="pNew" type="password" autocomplete="new-password" minlength="8" required></label>
-              <label class="field"><span>Ulangi kata sandi baru</span><input id="pNew2" type="password" autocomplete="new-password" minlength="8" required></label>
+        <div class="admin-layout">
+          <section class="card">
+            <div class="card-header">
+              <span class="head-icon green"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg></span>
+              <div class="head-text"><h3>Status keamanan</h3><span>Koneksi dan perlindungan token</span></div>
             </div>
-            <div class="actions"><button class="btn btn-primary" type="submit">Ganti kata sandi</button></div>
-          </form>
-        </section>
+            <div class="card-body"><dl class="kv kv-wide" id="secInfo"></dl></div>
+          </section>
 
-        <section class="card">
-          <h2 class="card-title">Perangkat ini</h2>
-          <p class="hint">Hapus token dari perangkat ini jika Anda memakai komputer orang lain, atau untuk mengganti token. Token di GitHub tetap aktif sampai Anda mencabutnya di
-            <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener noreferrer">pengaturan token GitHub</a>.</p>
-          <div class="actions"><button class="btn btn-danger" type="button" id="btnForget">Hapus token dari perangkat ini</button></div>
-        </section>
+          <div class="stack">
+            <section class="card">
+              <div class="card-header">
+                <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span>
+                <div class="head-text"><h3>Ganti kata sandi panel</h3></div>
+              </div>
+              <form id="formPass" class="form card-body" autocomplete="off">
+                <label class="field"><span>Kata sandi saat ini</span><input id="pOld" type="password" autocomplete="current-password" required></label>
+                <div class="row row-2">
+                  <label class="field"><span>Kata sandi baru</span><input id="pNew" type="password" autocomplete="new-password" minlength="8" required></label>
+                  <label class="field"><span>Ulangi kata sandi baru</span><input id="pNew2" type="password" autocomplete="new-password" minlength="8" required></label>
+                </div>
+                <div class="actions"><button class="btn btn-primary" type="submit">Ganti kata sandi</button></div>
+              </form>
+            </section>
+
+            <section class="card">
+              <div class="card-header">
+                <span class="head-icon red"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></span>
+                <div class="head-text"><h3>Perangkat ini</h3></div>
+              </div>
+              <div class="card-body">
+                <p class="note">Hapus token dari perangkat ini jika Anda memakai komputer orang lain atau ingin mengganti token. Token tetap aktif di GitHub sampai Anda mencabutnya di
+                  <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener noreferrer">pengaturan token GitHub</a>.</p>
+                <button class="btn btn-danger" type="button" id="btnForget">Hapus token dari perangkat ini</button>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -226,13 +310,13 @@
   <template id="tplSection">
     <div class="repeat-row">
       <div class="repeat-fields">
-        <input class="r-judul" maxlength="60" placeholder="Judul, misalnya: Mentor Pembimbing">
+        <input class="r-judul" maxlength="60" placeholder="Judul, misalnya: Kontak">
         <textarea class="r-isi" rows="3" maxlength="1000" placeholder="Isi bagian ini"></textarea>
       </div>
       <div class="repeat-tools">
-        <button type="button" class="icon-btn" data-move="-1" title="Naik">↑</button>
-        <button type="button" class="icon-btn" data-move="1" title="Turun">↓</button>
-        <button type="button" class="icon-btn danger" data-remove title="Hapus">×</button>
+        <button type="button" class="icon-btn" data-move="-1" title="Naik"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+        <button type="button" class="icon-btn" data-move="1" title="Turun"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
+        <button type="button" class="icon-btn danger" data-remove title="Hapus"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
       </div>
     </div>
   </template>
@@ -244,16 +328,16 @@
         <input class="r-url" maxlength="300" placeholder="https://…">
       </div>
       <div class="repeat-tools">
-        <button type="button" class="icon-btn" data-move="-1" title="Naik">↑</button>
-        <button type="button" class="icon-btn" data-move="1" title="Turun">↓</button>
-        <button type="button" class="icon-btn danger" data-remove title="Hapus">×</button>
+        <button type="button" class="icon-btn" data-move="-1" title="Naik"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+        <button type="button" class="icon-btn" data-move="1" title="Turun"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
+        <button type="button" class="icon-btn danger" data-remove title="Hapus"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
       </div>
     </div>
   </template>
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js"></script>
-  <script src="assets/admin.js"></script>
+  <script src="assets/common.js?v=3"></script>
+  <script src="assets/admin.js?v=3"></script>
 </body>
 </html>

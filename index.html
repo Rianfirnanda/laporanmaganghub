@@ -7,24 +7,52 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a5cff'/%3E%3Cpath d='M20 18h24v30H20z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M26 28h12M26 36h12' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#163ba2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Cpath d='M22 16h14l8 8v24H22z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M28 34h10M28 41h10' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
+  <link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
+  <nav class="navbar" id="top">
+    <div class="container nav-inner">
+      <a class="brand" href="./">
+        <span class="brand-mark"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></span>
+        <span class="brand-text">Laporan<b>magang</b></span>
+      </a>
+      <div class="nav-menu" id="navMenu">
+        <a href="#harian" data-view="harian">Kegiatan</a>
+        <a href="#galeri" data-view="galeri">Galeri</a>
+        <a href="#rekap" data-view="rekap">Rekap Mingguan</a>
+        <a href="#tentang">Tentang</a>
+        <button class="btn btn-outline nav-print" type="button" data-print>
+          <svg class="ic" aria-hidden="true"><use href="#i-printer"/></svg> Cetak Laporan
+        </button>
+      </div>
+      <div class="nav-right">
+        <button class="btn btn-outline btn-print-desktop" type="button" data-print>
+          Cetak Laporan <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </button>
+        <span class="nav-avatar" id="navAvatar"></span>
+        <button class="nav-toggle" id="navToggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="navMenu">
+          <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
   <header class="hero">
     <div class="container hero-inner">
       <div class="profile">
-        <div class="avatar" id="avatar">–</div>
-        <div>
+        <div class="avatar" id="avatar"></div>
+        <div class="profile-text">
           <h1 id="nama">Memuat…</h1>
           <div class="chips">
-            <span class="chip chip-solid" id="posisi"></span>
-            <span class="chip-text" id="instansi"></span>
+            <span class="badge-pill" id="posisi"></span>
+            <span class="hero-sub" id="instansi"></span>
           </div>
-          <p class="program" id="program"></p>
         </div>
       </div>
       <div class="progress" id="progress" hidden>
@@ -41,32 +69,90 @@
     </div>
   </header>
 
-  <main class="container">
-    <section class="stats" id="stats"></section>
+  <div class="tabbar">
+    <div class="container tabbar-inner" role="tablist">
+      <button class="tabbar-item active" type="button" role="tab" data-view="harian">
+        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Kegiatan Harian
+      </button>
+      <button class="tabbar-item" type="button" role="tab" data-view="galeri">
+        <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Galeri Foto
+      </button>
+      <button class="tabbar-item" type="button" role="tab" data-view="rekap">
+        <svg class="ic" aria-hidden="true"><use href="#i-history"/></svg> Rekap Mingguan
+      </button>
+    </div>
+  </div>
 
-    <section class="toolbar">
-      <label class="field">
-        <span>Minggu</span>
-        <select id="filterMinggu"><option value="">Semua minggu</option></select>
-      </label>
-      <label class="field">
-        <span>Tanggal</span>
-        <input type="date" id="filterTanggal">
-      </label>
-      <label class="field grow">
-        <span>Cari kegiatan</span>
-        <input type="search" id="filterCari" placeholder="Ketik kata kunci…">
-      </label>
-      <button class="btn btn-ghost" id="btnReset" type="button">Reset</button>
-      <button class="btn btn-primary" id="btnPrint" type="button">Cetak laporan</button>
-    </section>
+  <main class="container page">
+    <div class="banner">
+      <span class="banner-icon"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+      <div>
+        <strong id="bannerTitle">Dokumentasi Kegiatan Magang</strong>
+        <span id="bannerText"></span>
+      </div>
+    </div>
 
-    <section id="timeline" aria-live="polite">
-      <p class="empty">Memuat kegiatan…</p>
-    </section>
+    <div class="layout">
+      <div class="main-col">
+        <section class="card filters">
+          <label class="field">
+            <span>Minggu</span>
+            <select id="filterMinggu"><option value="">Semua minggu</option></select>
+          </label>
+          <label class="field">
+            <span>Tanggal</span>
+            <input type="date" id="filterTanggal">
+          </label>
+          <label class="field grow">
+            <span>Cari kegiatan</span>
+            <input type="search" id="filterCari" placeholder="Ketik kata kunci…">
+          </label>
+          <button class="btn btn-light" id="btnReset" type="button">Reset</button>
+        </section>
+
+        <section id="view-harian" class="view" aria-live="polite"><p class="empty">Memuat kegiatan…</p></section>
+        <section id="view-galeri" class="view" hidden></section>
+        <section id="view-rekap" class="view" hidden></section>
+      </div>
+
+      <aside class="side-col">
+        <section class="card">
+          <div class="card-header"><h3>Info Instansi &amp; Mentor</h3></div>
+          <div class="card-body side-body">
+            <div class="org">
+              <span class="org-logo" id="orgLogo"></span>
+              <div>
+                <strong id="orgName"></strong>
+                <span id="orgRole"></span>
+              </div>
+            </div>
+            <div id="mentorBox" hidden>
+              <div class="side-label">Mentor Pembimbing</div>
+              <div class="org">
+                <span class="org-logo soft" id="mentorLogo"></span>
+                <div>
+                  <strong id="mentorName"></strong>
+                  <span id="mentorRole"></span>
+                </div>
+              </div>
+            </div>
+            <div class="side-label">Periode Magang</div>
+            <dl class="kv" id="periode"></dl>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header"><h3>Ringkasan</h3></div>
+          <div class="card-body">
+            <div class="mini-stats" id="stats"></div>
+            <p class="updated" id="updated"></p>
+          </div>
+        </section>
+      </aside>
+    </div>
   </main>
 
-  <footer class="site-footer">
+  <footer class="site-footer" id="tentang">
     <div class="container">
       <div class="footer-grid" id="footerGrid"></div>
       <div class="footer-bottom">
@@ -77,16 +163,16 @@
   </footer>
 
   <div class="lightbox" id="lightbox" hidden>
-    <button class="lb-close" id="lbClose" aria-label="Tutup">×</button>
-    <button class="lb-nav lb-prev" id="lbPrev" aria-label="Sebelumnya">‹</button>
+    <button class="lb-close" id="lbClose" type="button" aria-label="Tutup"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="Sebelumnya">‹</button>
     <figure>
       <img id="lbImg" alt="">
       <figcaption id="lbCap"></figcaption>
     </figure>
-    <button class="lb-nav lb-next" id="lbNext" aria-label="Berikutnya">›</button>
+    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/common.js?v=3"></script>
+  <script src="assets/app.js?v=3"></script>
 </body>
 </html>
