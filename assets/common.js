@@ -236,10 +236,18 @@ async function periksaPembaruan() {
   setInterval(periksaPembaruan, 5 * 60 * 1000);
 })();
 
-// ---------- Waktu server (WIB) ----------
+// ---------- Waktu server (WIB/WITA/WIT) ----------
 // Jam HP/laptop bisa salah atau diubah, jadi waktu diambil dari header "Date"
 // server GitHub Pages lalu dipakai sebagai selisih terhadap jam perangkat.
-const ZONA = 'Asia/Jakarta';
+// Zona waktu mengikuti pengaturan "zonaWaktu" di data/config.json.
+const ZONA_WAKTU = { 'Asia/Jakarta': 'WIB', 'Asia/Makassar': 'WITA', 'Asia/Jayapura': 'WIT' };
+let ZONA = 'Asia/Jakarta';
+let ZONA_LABEL = 'WIB';
+
+function aturZona(tz) {
+  ZONA = Object.hasOwn(ZONA_WAKTU, tz) ? tz : 'Asia/Jakarta';
+  ZONA_LABEL = ZONA_WAKTU[ZONA];
+}
 let serverOffset = 0;
 let serverSynced = false;
 
@@ -261,7 +269,7 @@ function serverNow() {
   return new Date(Date.now() + serverOffset);
 }
 
-// Bagian tanggal/jam dalam WIB, apa pun zona waktu perangkat.
+// Bagian tanggal/jam dalam zona waktu magang, apa pun zona waktu perangkat.
 function wibParts(date = serverNow()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
     timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit',
@@ -273,7 +281,7 @@ function wibParts(date = serverNow()) {
 // "Sabtu, 27 September 2026 · 15.35.12 WIB"
 function formatWaktuWib(date, withDate = true) {
   const w = wibParts(date);
-  const jam = `${w.jam.replace(':', '.')}.${w.detik} WIB`;
+  const jam = `${w.jam.replace(':', '.')}.${w.detik} ${ZONA_LABEL}`;
   return withDate ? `${formatTanggal(w.tanggal)} · ${jam}` : jam;
 }
 

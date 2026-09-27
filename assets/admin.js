@@ -13,13 +13,20 @@ if (window.top !== window.self) {
 }
 
 const $ = id => document.getElementById(id);
-const STORE_KEY = 'laporanmagang.v2';
+// Satu akun GitHub bisa punya beberapa situs laporan di origin yang sama
+// (akun.github.io/repo-a dan /repo-b), jadi data perangkat diberi nama repo.
+const SCOPE = (() => {
+  const first = location.pathname.split('/').filter(Boolean)[0] || '';
+  return first && !/\.html?$/i.test(first) ? first.toLowerCase() : '';
+})();
+const scoped = name => (SCOPE ? `${name}@${SCOPE}` : name);
+const STORE_KEY = scoped('laporanmagang.v2');
 const LEGACY_KEY = 'laporanmagang.settings';
+migrateScope();
 const DATA_PATH = 'data/kegiatan.json';
 const CONFIG_PATH = 'data/config.json';
 const PBKDF2_ITERATIONS = 310000;
 const UPLOAD_CONCURRENCY = 3;
-const DEFAULT_PORTOFOLIO = 'https://rianfirnanda.vercel.app';
 const DEPLOY_POLL_MS = 4000;
 const DEPLOY_TIMEOUT_MS = 5 * 60000;
 const NAME_RE = /^[A-Za-z0-9._-]+$/;
@@ -62,6 +69,23 @@ async function decryptToken(enc, password) {
   }
 }
 
+// Versi lama memakai nama kunci tanpa nama repo: pindahkan sekali bila memang
+// milik repo situs ini.
+function migrateScope() {
+  if (!SCOPE) return;
+  try {
+    if (localStorage.getItem(STORE_KEY)) return;
+    const old = JSON.parse(localStorage.getItem('laporanmagang.v2'));
+    if (!old || String(old.repo || '').toLowerCase() !== SCOPE) return;
+    for (const name of ['laporanmagang.v2', 'laporanmagang.sesi', 'laporanmagang.drive', 'laporanmagang.drivetoken', 'laporanmagang.skrip.baru']) {
+      for (const st of [localStorage, sessionStorage]) {
+        const v = st.getItem(name);
+        if (v !== null) { st.setItem(scoped(name), v); st.removeItem(name); }
+      }
+    }
+  } catch { /* penyimpanan diblokir: abaikan */ }
+}
+
 function readStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch { return null; }
 }
@@ -92,7 +116,7 @@ function takeLegacy() {
 // Token yang sudah dibuka dienkripsi dengan kunci perangkat (AES-GCM, tidak bisa
 // diekspor, disimpan di IndexedDB). Hasilnya di sessionStorage (hilang saat tab
 // ditutup) atau localStorage 30 hari bila "Tetap masuk" dicentang.
-const SESSION_KEY = 'laporanmagang.sesi';
+const SESSION_KEY = scoped('laporanmagang.sesi');
 const REMEMBER_DAYS = 30;
 let rememberMe = false;
 
@@ -287,10 +311,14 @@ function renderHero(open) {
 }
 
 function showSetup(note) {
-  const g = { branch: 'main', ...guessRepo(), ...S };
+  const g = S.owner ? { ...S } : { branch: 'main', ...guessRepo() };
   $('sOwner').value = g.owner || '';
   $('sRepo').value = g.repo || '';
   $('sBranch').value = g.branch || 'main';
+  // Isian otomatis halaman pembuatan token (diabaikan GitHub bila tidak didukung).
+  const q = new URLSearchParams({ name: `Laporan Magang ${g.repo || ''}`.trim(), description: 'Panel admin laporan magang', contents: 'write' });
+  if (g.owner) q.set('target_name', g.owner);
+  $('tokenLink').href = `https://github.com/settings/personal-access-tokens/new?${q}`;
   $('sPass').value = '';
   $('sPass2').value = '';
   if (note) $('setupNote').textContent = note;
@@ -1102,12 +1130,15 @@ for (const [key, slot] of Object.entries(IMAGE_SLOTS)) {
 async function loadConfig() {
   try {
     CFG = await readRepoJSON(CONFIG_PATH, S.branch, {});
+    if (!CFG || typeof CFG !== 'object' || Array.isArray(CFG)) CFG = {};
     aturHariLibur(CFG.hariLibur);
+    aturZona(CFG.zonaWaktu);
     adoptSharedDrive();
     renderScript();
     renderDrive();
     fillConfigForm();
     renderHero(true);
+    renderStart();
   } catch (e) {
     toast(`Gagal memuat pengaturan: ${e.message}`, true);
   }
@@ -1118,6 +1149,9 @@ function fillConfigForm() {
   const f = c.footer || {};
   $('cNama').value = c.nama || '';
   $('cPosisi').value = c.posisi || '';
+  $('cDivisi').value = c.divisi || '';
+  $('cKotaTtd').value = c.kotaTtd || '';
+  $('cZona').value = ZONA_WAKTU[c.zonaWaktu] ? c.zonaWaktu : 'Asia/Jakarta';
   $('cInstansi').value = c.instansi || '';
   $('cProgram').value = c.program || '';
   $('cMulai').value = c.tanggalMulai || '';
@@ -1135,7 +1169,7 @@ function fillConfigForm() {
   (f.bagian || []).forEach(b => addRow('cSections', 'tplSection', { '.r-judul': b.judul, '.r-isi': b.isi }));
   $('cLinks').replaceChildren();
   (f.tautan || []).forEach(l => addRow('cLinks', 'tplLink', { '.r-label': l.label, '.r-url': l.url }));
-  $('cPortofolio').value = c.portofolio ?? DEFAULT_PORTOFOLIO;
+  $('cPortofolio').value = c.portofolio || '';
   $('cLibur').replaceChildren();
   (Array.isArray(c.hariLibur) ? c.hariLibur : []).forEach(h => addRow('cLibur', 'tplLibur', { '.r-tanggal': h.tanggal, '.r-nama': h.nama, '.r-jenis': h.jenis === 'cuti' ? 'cuti' : 'libur' }));
   renderLiburInfo();
@@ -1249,8 +1283,12 @@ function readConfigForm() {
   const cfg = {
     ...(CFG || {}),
     nama: $('cNama').value.trim(),
+    repo: `${S.owner}/${S.repo}`,
     posisi: $('cPosisi').value.trim(),
+    divisi: $('cDivisi').value.trim(),
     instansi: $('cInstansi').value.trim(),
+    kotaTtd: $('cKotaTtd').value.trim(),
+    zonaWaktu: ZONA_WAKTU[$('cZona').value] ? $('cZona').value : 'Asia/Jakarta',
     program: $('cProgram').value.trim(),
     tanggalMulai: $('cMulai').value,
     tanggalSelesai: $('cSelesai').value,
@@ -1303,6 +1341,7 @@ $('formConfig').addEventListener('submit', async ev => {
     await commit('Perbarui profil dan tampilan website', async () => changes);
     CFG = cfg;
     aturHariLibur(CFG.hariLibur);
+    aturZona(CFG.zonaWaktu);
     fillConfigForm();
     renderHero(true);
     toast('Pengaturan tersimpan. Menunggu website diperbarui…');
@@ -1675,7 +1714,7 @@ async function runAutoAi(dates, quiet) {
 
 // Susul laporan yang belum ada (7 hari terakhir) setiap panel dibuka.
 function catchUpAi() {
-  if (!hasAi() || Date.now() - autoAiFailedAt < 60000) return;
+  if (!hasAi() || repoSalinan() || Date.now() - autoAiFailedAt < 60000) return;
   const today = wibParts().tanggal;
   const recent = [...new Set(entries.map(e => e.tanggal))].filter(d => d <= today).sort().slice(-7);
   if (tanggalPerluAi(recent).length) autoAi(recent, { quiet: false });
@@ -1806,7 +1845,7 @@ $('btnAiForget').addEventListener('click', () => {
 // ================= Google Drive (salinan foto) =================
 // Login lewat Google Identity Services (tanpa server). Izin drive.file hanya
 // memberi akses ke file/folder yang dibuat panel ini, bukan seluruh Drive.
-const DRIVE_KEY = 'laporanmagang.drive';
+const DRIVE_KEY = scoped('laporanmagang.drive');
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_ROOT = 'Laporan Magang';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
@@ -1837,12 +1876,13 @@ function driveAuth() {
 
 // ================= Apps Script (Drive tanpa login) =================
 let SCRIPT_KEY = '';   // kunci rahasia skrip, hanya di memori; tersimpan terenkripsi
-const SCRIPT_PENDING = 'laporanmagang.skrip.baru';
+const SCRIPT_PENDING = scoped('laporanmagang.skrip.baru');
 const SCRIPT_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
 let scriptTemplate = '';
 let scriptEmail = '';
 
 function scriptUrl() {
+  if (repoSalinan()) return '';
   const shared = CFG && CFG.drive && CFG.drive.skrip && CFG.drive.skrip.url;
   return SCRIPT_URL_RE.test(shared || '') ? shared : '';
 }
@@ -2000,7 +2040,7 @@ $('btnScriptForget').addEventListener('click', () => {
 // Perangkat baru: kunci dibuka dari config.json (terenkripsi kata sandi panel).
 async function adoptScriptKey(pass) {
   const enc = CFG && CFG.drive && CFG.drive.skrip && CFG.drive.skrip.kunciEnc;
-  if (SCRIPT_KEY || !enc || !pass) return;
+  if (SCRIPT_KEY || !enc || !pass || repoSalinan()) return;
   try {
     SCRIPT_KEY = await decryptToken(enc, pass);
     const st = readStore();
@@ -2029,7 +2069,7 @@ function loadGis() {
 // sehingga tidak perlu login ulang setiap halaman dimuat ulang. Google tidak
 // memberi token jangka panjang untuk aplikasi tanpa server; setelah habis,
 // panel meminta token baru tanpa memilih akun lagi (jendela menutup sendiri).
-const DRIVE_TOKEN_KEY = 'laporanmagang.drivetoken';
+const DRIVE_TOKEN_KEY = scoped('laporanmagang.drivetoken');
 
 async function saveDriveToken() {
   try {
@@ -2453,6 +2493,7 @@ function renderDrive() {
 // Client ID bukan rahasia, jadi disimpan di config.json agar HP dan laptop
 // otomatis memakai pengaturan yang sama. Status aktif & login tetap per perangkat.
 function adoptSharedDrive() {
+  if (repoSalinan()) return;
   const shared = CFG && CFG.drive && CFG.drive.clientId;
   if (!shared || shared === driveCfg.clientId) return;
   const first = !driveCfg.clientId;
@@ -2510,6 +2551,7 @@ $('btnDriveTest').addEventListener('click', async ev => {
 // Dipakai common.js: jangan muat ulang otomatis bila ada pekerjaan yang belum disimpan.
 function adaIsianBelumDisimpan() {
   if (busy > 0 || newPhotos.length || editingId) return true;
+  if (!$('startCard').hidden && $('mbNama').value.trim()) return true;
   return ['fJudul', 'fKet', 'hRingkasan', 'hPembelajaran', 'hKendala', 'aiKey', 'groqKey'].some(id => {
     const el = $(id);
     return el && el.value.trim() && el.value !== el.defaultValue && !(id.startsWith('h') && harianTersimpan(id));
@@ -2521,6 +2563,134 @@ function harianTersimpan(id) {
   const key = { hRingkasan: 'ringkasan', hPembelajaran: 'pembelajaran', hKendala: 'kendala' }[id];
   return (rec[key] || '') === $(id).value;
 }
+
+// ================= Mulai baru (repo salinan) =================
+// Teman yang memakai "Use this template"/fork mendapat salinan data pemilik
+// lama. config.json menyimpan "repo" pemiliknya; bila berbeda dengan repo yang
+// sedang dibuka, panel menawarkan untuk mengosongkan data dan mengisi profil
+// baru. Selama belum dikosongkan, pengaturan Drive/Apps Script milik pemilik
+// lama tidak dipakai.
+function repoSalinan() {
+  const r = String((CFG && CFG.repo) || '').toLowerCase();
+  return Boolean(r) && r !== `${S.owner}/${S.repo}`.toLowerCase();
+}
+
+let startDismissed = false;
+
+function renderStart(force = false) {
+  const salinan = repoSalinan();
+  const perlu = salinan || !(CFG && CFG.nama);
+  if (!force && (!perlu || startDismissed)) { $('startCard').hidden = true; return; }
+  const c = CFG || {};
+  $('startTitle').textContent = salinan ? 'Repository ini salinan milik orang lain' : !c.nama ? 'Selamat datang' : 'Mulai dari awal';
+  $('startNote').textContent = salinan
+    ? `Isinya masih data ${c.nama || 'pemilik sebelumnya'} (${c.repo}). Kosongkan dulu lalu isi profil Anda supaya website ini menjadi laporan Anda sendiri. Yang akan dihapus dari repository ${S.owner}/${S.repo}:`
+    : 'Semua data berikut akan dihapus dari repository ini, lalu profil diganti dengan isian di bawah:';
+  // Salinan: identitas dikosongkan; program, instansi, dan tanggal biasanya sama (satu batch).
+  $('mbNama').value = salinan ? '' : c.nama || '';
+  $('mbPosisi').value = salinan ? '' : c.posisi || '';
+  $('mbDivisi').value = salinan ? '' : c.divisi || '';
+  $('mbInstansi').value = c.instansi || '';
+  $('mbProgram').value = c.program || '';
+  $('mbMulai').value = c.tanggalMulai || '';
+  $('mbSelesai').value = c.tanggalSelesai || '';
+  $('mbZona').value = ZONA_WAKTU[c.zonaWaktu] ? c.zonaWaktu : 'Asia/Jakarta';
+  $('mbSetuju').checked = false;
+  $('btnStartClose').hidden = false;
+  $('startCard').hidden = false;
+  countRepoData().then(list => { $('startList').innerHTML = list.map(t => `<li>${esc(t)}</li>`).join(''); })
+    .catch(e => { $('startList').innerHTML = `<li>${esc(e.message)}</li>`; });
+}
+
+async function repoUploads(ref) {
+  const tree = await gh(`/git/trees/${encodeURIComponent(ref)}?recursive=1`);
+  if (tree.truncated) throw new Error('Repository terlalu besar untuk dikosongkan otomatis dari panel.');
+  return tree.tree.filter(t => t.type === 'blob' && t.path.startsWith('uploads/'));
+}
+
+async function countRepoData() {
+  const [files, keg, har] = await Promise.all([
+    repoUploads(S.branch),
+    readRepoJSON(DATA_PATH, S.branch, []),
+    readRepoJSON(HARIAN_PATH, S.branch, {})
+  ]);
+  const bytes = files.reduce((n, f) => n + (f.size || 0), 0);
+  return [
+    `${Array.isArray(keg) ? keg.length : 0} kegiatan`,
+    `${har && typeof har === 'object' ? Object.keys(har).length : 0} laporan harian dan ringkasan AI`,
+    `${files.length} file foto/gambar (${formatBytes(bytes)})`,
+    'Profil, foto profil, logo, ikon situs, footer, dan pengaturan Google Drive'
+  ];
+}
+
+$('btnStartOpen').addEventListener('click', () => {
+  renderStart(true);
+  $('startCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('btnStartClose').addEventListener('click', () => { startDismissed = true; $('startCard').hidden = true; });
+
+$('formStart').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const p = {
+    nama: $('mbNama').value.trim(),
+    posisi: $('mbPosisi').value.trim(),
+    divisi: $('mbDivisi').value.trim(),
+    instansi: $('mbInstansi').value.trim(),
+    program: $('mbProgram').value.trim(),
+    tanggalMulai: $('mbMulai').value,
+    tanggalSelesai: $('mbSelesai').value,
+    zonaWaktu: ZONA_WAKTU[$('mbZona').value] ? $('mbZona').value : 'Asia/Jakarta'
+  };
+  if (!p.nama) return toast('Nama wajib diisi.', true);
+  if (!p.tanggalMulai || !p.tanggalSelesai || p.tanggalSelesai < p.tanggalMulai) return toast('Tanggal selesai harus sama atau setelah tanggal mulai.', true);
+  if (!$('mbSetuju').checked) return toast('Centang pernyataan persetujuan dulu.', true);
+  if (!confirm(`Kosongkan semua data di ${S.owner}/${S.repo} dan mulai sebagai ${p.nama}?`)) return;
+  await withBusy($('btnStart'), async () => {
+    const repo = `${S.owner}/${S.repo}`;
+    let old = {};
+    msg('startMsg', 'Mengosongkan repository…');
+    await commit(`Mulai baru: laporan magang ${p.nama}`, async base => {
+      const [files, cfg] = await Promise.all([repoUploads(base), readRepoJSON(CONFIG_PATH, base, {})]);
+      old = cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {};
+      const milikSendiri = String(old.repo || '').toLowerCase() === repo.toLowerCase();
+      const baru = {
+        nama: p.nama, posisi: p.posisi, divisi: p.divisi, instansi: p.instansi, program: p.program,
+        tanggalMulai: p.tanggalMulai, tanggalSelesai: p.tanggalSelesai, zonaWaktu: p.zonaWaktu, kotaTtd: '',
+        fotoProfil: '', judulSitus: '', warnaTema: safeColor(old.warnaTema), tampilkanLinkAdmin: true,
+        footer: { teks: '', judulTautan: '', bagian: [], tautan: [] },
+        mentor: { nama: '', jabatan: '' }, portofolio: '', ikonSitus: '', logoInstansi: '',
+        hariLibur: Array.isArray(old.hariLibur) && old.hariLibur.length ? old.hariLibur
+          : LIBUR_SKB.map(([tanggal, nama, jenis]) => ({ tanggal, nama, jenis })),
+        repo
+      };
+      // Drive milik pemilik lama tidak ikut; milik sendiri (sudah diatur di repo ini) dipertahankan.
+      if (milikSendiri && old.drive) baru.drive = old.drive;
+      return [
+        ...files.map(f => ({ path: f.path, delete: true })),
+        { path: DATA_PATH, content: '[]\n' },
+        { path: HARIAN_PATH, content: '{}\n' },
+        { path: RINGKASAN_PATH, content: '{}\n' },
+        { path: CONFIG_PATH, content: JSON.stringify(baru, null, 2) + '\n' }
+      ];
+    });
+    // Client ID Google pemilik lama yang sempat tersalin ke perangkat ini.
+    const oldClient = old.drive && old.drive.clientId;
+    if (oldClient && driveCfg.clientId === oldClient && String(old.repo || '').toLowerCase() !== repo.toLowerCase()) {
+      clearDriveToken();
+      driveCfg = {};
+      try { localStorage.removeItem(DRIVE_KEY); } catch { /* abaikan */ }
+    }
+    startDismissed = true;
+    $('startCard').hidden = true;
+    resetForm();
+    await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
+    renderHarianForm();
+    renderDrive();
+    renderScript();
+    openTab('profil');
+    toast('Repository sudah bersih dan profil Anda tersimpan. Lengkapi foto, logo, dan footer di tab Profil.');
+  }, 'startMsg');
+});
 
 // ================= Utilitas UI =================
 function msg(id, text) { $(id).textContent = text; }

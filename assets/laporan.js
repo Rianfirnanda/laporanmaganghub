@@ -29,6 +29,7 @@ async function init() {
   ENTRIES = (Array.isArray(ENTRIES) ? ENTRIES : []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
   if (!HARIAN || typeof HARIAN !== 'object' || Array.isArray(HARIAN)) HARIAN = {};
   aturHariLibur(CONFIG.hariLibur);
+  aturZona(CONFIG.zonaWaktu);
   applyTheme(CONFIG.warnaTema);
   const ikon = safePath(CONFIG.ikonSitus);
   if (ikon) $('favicon').href = ikon;
@@ -77,8 +78,10 @@ function photosOf(items, max) {
   return out;
 }
 
-// "BPS Kabupaten Bengkulu Tengah" -> "Bengkulu Tengah" (untuk tempat tanda tangan).
+// Tempat tanda tangan: isian "Kota tanda tangan" di panel admin, atau diambil
+// dari nama instansi ("BPS Kabupaten Bengkulu Tengah" -> "Bengkulu Tengah").
 function tempat() {
+  if (CONFIG.kotaTtd) return String(CONFIG.kotaTtd);
   const s = String(CONFIG.instansi || '');
   const m = s.match(/(?:Kabupaten|Kab\.|Kota|Provinsi)\s+(.+)$/i);
   return m ? m[1] : s;
@@ -143,7 +146,7 @@ function renderDokumen(days, range) {
   const m = CONFIG.mentor || {};
   const lastDate = days[days.length - 1].date;
   const rows = [
-    ['Nama', CONFIG.nama], ['Posisi', CONFIG.posisi], ['Instansi', CONFIG.instansi],
+    ['Nama', CONFIG.nama], ['Posisi', CONFIG.posisi], ['Divisi / unit kerja', CONFIG.divisi], ['Instansi', CONFIG.instansi],
     ['Program', CONFIG.program], ['Mentor pembimbing', m.nama ? `${m.nama}${m.jabatan ? `, ${m.jabatan}` : ''}` : ''],
     ['Periode', `Minggu ke-${WEEK} · ${range}`]
   ].filter(([, v]) => v);
