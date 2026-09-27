@@ -9,15 +9,19 @@ let MODE = params.get('mode') === 'slide' ? 'slide' : 'dokumen';
 let CONFIG = {};
 let ENTRIES = [];
 let HARIAN = {};
+let MINGGUAN = {};   // ringkasan AI per minggu (data/ringkasan.json)
 let WEEK = 0;
 
 async function init() {
   try {
-    [CONFIG, ENTRIES, HARIAN] = await Promise.all([
+    let ringkasan;
+    [CONFIG, ENTRIES, HARIAN, ringkasan] = await Promise.all([
       fetchJSON('data/config.json'),
       fetchJSON('data/kegiatan.json'),
-      fetchJSON('data/harian.json').catch(() => ({}))
+      fetchJSON('data/harian.json').catch(() => ({})),
+      fetchJSON('data/ringkasan.json').catch(() => null)
     ]);
+    MINGGUAN = (ringkasan && typeof ringkasan.mingguan === 'object' && ringkasan.mingguan) || {};
   } catch (e) {
     $('out').innerHTML = `<p class="loading">${esc(e.message)}</p>`;
     return;
@@ -168,6 +172,7 @@ function renderDokumen(days, range) {
     <table class="doc-id">${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>
 
     <h2>A. Ringkasan minggu ini</h2>
+    ${MINGGUAN[WEEK] ? `<p class="doc-summary">${para(MINGGUAN[WEEK])}</p>` : ''}
     <ul class="doc-stats">
       <li><b>${s.hadir}</b> hari hadir</li>
       <li><b>${s.kegiatan}</b> kegiatan</li>
@@ -219,6 +224,7 @@ function renderSlides(days, range) {
 
   slides.push(`<section class="slide">
     <h2>Ringkasan minggu ini</h2>
+    ${MINGGUAN[WEEK] ? `<p class="sl-summary">${esc(MINGGUAN[WEEK])}</p>` : ''}
     <div class="sl-stats">
       <div><b>${s.hadir}</b><span>hari hadir</span></div>
       <div><b>${s.kegiatan}</b><span>kegiatan</span></div>

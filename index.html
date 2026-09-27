@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <script src="assets/theme.js?v=12"></script>
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
@@ -11,9 +12,9 @@
   <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Cpath d='M22 16h14l8 8v24H22z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M28 34h10M28 41h10' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=11">
+  <link rel="stylesheet" href="assets/style.css?v=12">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -41,8 +42,11 @@
         <a class="btn btn-primary btn-print-desktop" href="laporan.html?mode=slide" data-laporan="slide">
           <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Slide
         </a>
+        <button class="icon-btn theme-btn" type="button" data-theme-toggle aria-label="Ganti mode tampilan">
+          <svg class="ic i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ic i-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
         <span class="nav-avatar" id="navAvatar"></span>
-        <button class="nav-toggle" id="navToggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="navMenu">
+        <button class="icon-btn nav-toggle" id="navToggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="navMenu">
           <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
         </button>
       </div>
@@ -50,7 +54,7 @@
   </nav>
 
   <header class="hero">
-    <div class="container hero-inner">
+    <div class="container"><div class="hero-inner">
       <div class="profile">
         <div class="avatar" id="avatar"></div>
         <div class="profile-text">
@@ -72,11 +76,11 @@
           <text x="32" y="36" text-anchor="middle" id="ringText">0%</text>
         </svg>
       </div>
-    </div>
+    </div></div>
   </header>
 
   <div class="tabbar">
-    <div class="container tabbar-inner" role="tablist">
+    <div class="container"><div class="tabbar-inner" role="tablist">
       <button class="tabbar-item active" type="button" role="tab" data-view="harian">
         <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> <span class="lbl-long">Kegiatan Harian</span><span class="lbl-short">Harian</span>
       </button>
@@ -86,17 +90,20 @@
       <button class="tabbar-item" type="button" role="tab" data-view="rekap">
         <svg class="ic" aria-hidden="true"><use href="#i-history"/></svg> <span class="lbl-long">Rekap Mingguan</span><span class="lbl-short">Rekap</span>
       </button>
-    </div>
+    </div></div>
   </div>
 
   <main class="container page">
-    <div class="banner">
-      <span class="banner-icon"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></span>
-      <div>
-        <strong id="bannerTitle">Dokumentasi Kegiatan Magang</strong>
-        <span id="bannerText"></span>
+    <section class="card ai-card" id="aiCard" hidden>
+      <div class="ai-head">
+        <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+        <h3 id="aiTitle">Ringkasan minggu ini</h3>
+        <small id="aiUpdated"></small>
       </div>
-    </div>
+      <p class="ai-text" id="aiText"></p>
+      <ul class="ai-highlights" id="aiHighlights"></ul>
+      <details class="ai-more" id="aiMoreWrap"><summary>Ringkasan keseluruhan magang</summary><p id="aiMore"></p></details>
+    </section>
 
     <div class="layout">
       <div class="main-col">
@@ -193,7 +200,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=11"></script>
-  <script src="assets/app.js?v=11"></script>
+  <script src="assets/common.js?v=12"></script>
+  <script src="assets/app.js?v=12"></script>
 </body>
 </html>

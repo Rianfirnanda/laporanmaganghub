@@ -4,17 +4,19 @@ const $ = id => document.getElementById(id);
 const VIEWS = ['harian', 'galeri', 'rekap'];
 let CONFIG = null;
 let ENTRIES = [];
-let HARIAN = {};   // data/harian.json: status kehadiran + laporan harian per tanggal
+let HARIAN = {};
+let RINGKASAN = null;  // data/ringkasan.json: ringkasan AI untuk dasbor   // data/harian.json: status kehadiran + laporan harian per tanggal
 let view = 'harian';
 let lbPhotos = [];
 let lbIndex = 0;
 
 async function init() {
   try {
-    [CONFIG, ENTRIES, HARIAN] = await Promise.all([
+    [CONFIG, ENTRIES, HARIAN, RINGKASAN] = await Promise.all([
       fetchJSON('data/config.json'),
       fetchJSON('data/kegiatan.json'),
-      fetchJSON('data/harian.json').catch(() => ({}))
+      fetchJSON('data/harian.json').catch(() => ({})),
+      fetchJSON('data/ringkasan.json').catch(() => null)
     ]);
   } catch (e) {
     $('view-harian').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
@@ -77,21 +79,19 @@ function renderProfile() {
   $('progress').hidden = false;
 }
 
+// Ringkasan AI (dibuat di panel admin setiap kegiatan disimpan).
 function renderBanner() {
-  const today = todayStr();
-  const w = mingguKe(CONFIG, today);
-  const latest = ENTRIES.reduce((m, e) => (e.tanggal > m ? e.tanggal : m), '');
-  let title;
-  if (today < CONFIG.tanggalMulai) title = `Magang dimulai ${formatTanggal(CONFIG.tanggalMulai, false)}.`;
-  else if (today > CONFIG.tanggalSelesai) title = 'Program magang telah selesai. Terima kasih!';
-  else {
-    const n = ENTRIES.filter(e => mingguKe(CONFIG, e.tanggal) === w).length;
-    title = `Minggu ke-${w} sedang berjalan · ${n} kegiatan tercatat minggu ini.`;
-  }
-  $('bannerTitle').textContent = title;
-  $('bannerText').textContent = latest
-    ? `Kegiatan terakhir: ${formatTanggal(latest)}`
-    : 'Belum ada kegiatan yang didokumentasikan.';
+  const r = RINGKASAN && typeof RINGKASAN === 'object' ? RINGKASAN : null;
+  if (!r || !r.mingguIni) { $('aiCard').hidden = true; return; }
+  $('aiTitle').textContent = r.minggu ? `Ringkasan AI · Minggu ke-${r.minggu}` : 'Ringkasan AI';
+  $('aiUpdated').textContent = r.diperbarui ? `diperbarui ${formatTanggal(toDateStr(new Date(r.diperbarui)), false)}` : '';
+  $('aiText').textContent = r.mingguIni;
+  const hl = Array.isArray(r.sorotan) ? r.sorotan.filter(Boolean).slice(0, 4) : [];
+  $('aiHighlights').innerHTML = hl.map(h => `<li>${esc(h)}</li>`).join('');
+  $('aiHighlights').hidden = !hl.length;
+  $('aiMore').textContent = r.keseluruhan || '';
+  $('aiMoreWrap').hidden = !r.keseluruhan;
+  $('aiCard').hidden = false;
 }
 
 function renderSidebar() {
@@ -374,8 +374,11 @@ function renderHarian(list) {
 
 function renderStep(e) {
   const sesi = ['Pagi', 'Siang', 'Sore'].includes(e.sesi) ? e.sesi : sesiDariJam(e.jam);
-  const photos = (e.foto || []).map(safePath).filter(Boolean).map(src =>
-    `<button class="photo" data-lb="${addPhoto(src, e)}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy"></button>`).join('');
+  // Ringkas: maksimal 3 foto tampil, sisanya jadi "+n" (semua tetap bisa dibuka di lightbox).
+  const all = (e.foto || []).map(safePath).filter(Boolean);
+  const idx = all.map(src => addPhoto(src, e));
+  const photos = all.slice(0, 3).map((src, i) =>
+    `<button class="photo" data-lb="${idx[i]}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${i === 2 && all.length > 3 ? `<span class="photo-more">+${all.length - 3}</span>` : ''}</button>`).join('');
   return `<li class="step">
     <span class="step-dot">${icon('check')}</span>
     <div class="step-body">
@@ -385,7 +388,7 @@ function renderStep(e) {
         ${e.lokasi ? `<span class="lokasi">${icon('pin')}${esc(e.lokasi)}</span>` : ''}
       </div>
       <h4>${esc(e.judul)}</h4>
-      ${e.keterangan ? `<p class="ket">${esc(e.keterangan)}</p>` : ''}
+      ${e.keterangan ? `<p class="ket" title="Ketuk untuk membaca selengkapnya">${esc(e.keterangan)}</p>` : ''}
       ${photos ? `<div class="photos">${photos}</div>` : ''}
     </div>
   </li>`;
@@ -440,6 +443,11 @@ function renderRekap(list) {
   }
   $('view-rekap').innerHTML = html;
 }
+
+document.addEventListener('click', ev => {
+  const k = ev.target.closest('.ket');
+  if (k) k.classList.toggle('open');
+});
 
 // ---------- Laporan harian (modal) ----------
 function openReport(date) {

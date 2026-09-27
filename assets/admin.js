@@ -76,6 +76,7 @@ function writeStore(obj) {
 
 function clearStore() {
   try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(LEGACY_KEY); } catch { /* abaikan */ }
+  clearSession();
 }
 
 // Versi lama menyimpan token tanpa enkripsi: ambil sekali lalu hapus.
@@ -85,6 +86,76 @@ function takeLegacy() {
     localStorage.removeItem(LEGACY_KEY);
     return old && old.token ? old : null;
   } catch { return null; }
+}
+
+// ---------- Sesi: tetap masuk saat halaman dimuat ulang ----------
+// Token yang sudah dibuka dienkripsi dengan kunci perangkat (AES-GCM, tidak bisa
+// diekspor, disimpan di IndexedDB). Hasilnya di sessionStorage (hilang saat tab
+// ditutup) atau localStorage 30 hari bila "Tetap masuk" dicentang.
+const SESSION_KEY = 'laporanmagang.sesi';
+const REMEMBER_DAYS = 30;
+let rememberMe = false;
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('laporanmagang', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('keys');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deviceKey() {
+  const db = await openIdb();
+  const get = () => new Promise((resolve, reject) => {
+    const r = db.transaction('keys').objectStore('keys').get('device');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+  let key = await get();
+  if (!key) {
+    key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('keys', 'readwrite');
+      tx.objectStore('keys').put(key, 'device');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  return key;
+}
+
+async function saveSession() {
+  if (!TOKEN) return;
+  try {
+    const key = await deviceKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const body = JSON.stringify({ token: TOKEN, ai: AI_KEY, exp: rememberMe ? Date.now() + REMEMBER_DAYS * 86400000 : 0 });
+    const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(body)));
+    const blob = JSON.stringify({ iv: toB64(iv), data: toB64(data) });
+    clearSession();
+    (rememberMe ? localStorage : sessionStorage).setItem(SESSION_KEY, blob);
+  } catch { /* browser tanpa IndexedDB/penyimpanan: tetap jalan, hanya perlu login ulang */ }
+}
+
+async function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    rememberMe = !sessionStorage.getItem(SESSION_KEY);
+    const { iv, data } = JSON.parse(raw);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, await deviceKey(), fromB64(data));
+    const sess = JSON.parse(td.decode(plain));
+    if (sess.exp && sess.exp < Date.now()) { clearSession(); return null; }
+    return sess;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); } catch { /* abaikan */ }
 }
 
 function guessRepo() {
@@ -264,6 +335,8 @@ $('formSetup').addEventListener('submit', async ev => {
     $('sToken').value = '';
     $('sPass').value = '';
     $('sPass2').value = '';
+    rememberMe = false;
+    saveSession();
     await enterApp();
     if (token.startsWith('ghp_')) toast('Terhubung. Disarankan memakai token fine-grained (github_pat_…) yang hanya untuk repo ini.', true);
     else toast('Terhubung. Token tersimpan terenkripsi di perangkat ini.');
@@ -290,6 +363,8 @@ $('formUnlock').addEventListener('submit', async ev => {
     failCount = 0;
     AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
     $('uPass').value = '';
+    rememberMe = $('uRemember').checked;
+    saveSession();
     await enterApp();
   });
 });
@@ -314,6 +389,7 @@ async function enterApp() {
 }
 
 function lock(reason) {
+  clearSession();
   TOKEN = '';
   AI_KEY = '';
   harian = {};
@@ -523,6 +599,7 @@ $('formEntry').addEventListener('submit', async ev => {
     if (driveMsg !== null) toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan.${driveMsg} Menunggu website diperbarui…`);
     resetForm();
     renderList();
+    autoAi(tanggal);
   }, 'saveMsg');
 });
 
@@ -795,7 +872,7 @@ function renderSecurity() {
     ['Repository', `${S.owner}/${S.repo} (branch ${S.branch})`],
     ['Jenis token', TOKEN.startsWith('github_pat_') ? '✅ Fine-grained' : '⚠️ Classic, sebaiknya diganti fine-grained'],
     ['Penyimpanan token', stored ? '✅ Terenkripsi AES-256 dengan kata sandi panel' : '—'],
-    ['Kunci', 'Manual (tombol Kunci) atau saat halaman dimuat ulang']
+    ['Sesi', rememberMe ? `Tetap masuk ${REMEMBER_DAYS} hari di perangkat ini (tekan Kunci untuk keluar)` : 'Tetap masuk sampai tab ditutup atau tombol Kunci ditekan']
   ];
   $('secInfo').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
 }
@@ -888,6 +965,7 @@ const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
 let harian = {};
 let AI_KEY = '';   // hanya di memori; tersimpan terenkripsi sebagai stored.aiEnc
+const lastAi = {};  // hasil AI terakhir per tanggal (untuk menandai laporan "auto")
 let aiModels = [];  // model Gemini yang tersedia untuk kunci ini
 
 const AI_SYSTEM = `Kamu membantu seorang peserta magang menulis laporan harian untuk daftar hadir di monev MagangHub Kemnaker. Laporan diisi setiap sore dan terdiri dari tiga bagian: ringkasan kegiatan, pembelajaran yang didapat, dan kendala yang dihadapi.
@@ -989,11 +1067,9 @@ document.addEventListener('click', async ev => {
   }
 });
 
-function harianPrompt(date) {
+function harianPrompt(date, status = $('hStatus').value, ket = $('hKet').value.trim()) {
   const c = CFG || {};
   const items = dayEntries(date);
-  const status = $('hStatus').value;
-  const ket = $('hKet').value.trim();
   const lines = items.map(e => {
     const parts = [`- ${e.jam || '??:??'} (${e.sesi || sesiDariJam(e.jam)}): ${e.judul}`];
     if (e.lokasi) parts.push(`Lokasi: ${e.lokasi}.`);
@@ -1060,14 +1136,14 @@ function currentModel() {
   return (stored && stored.aiModel) || GEMINI_FALLBACK_MODEL;
 }
 
-async function generateHarian(date) {
+async function generateHarian(date, status = $('hStatus').value, ket = $('hKet').value.trim()) {
   if (!AI_KEY) throw new Error('Kunci API Gemini belum diatur. Isi di kartu "Asisten AI".');
-  if (!dayEntries(date).length && $('hStatus').value === 'Hadir') {
+  if (!dayEntries(date).length && status === 'Hadir') {
     throw new Error('Belum ada kegiatan pada tanggal ini. Tambahkan kegiatan dulu atau ubah status kehadiran.');
   }
   const data = await gemini(`models/${encodeURIComponent(currentModel())}:generateContent`, {
     systemInstruction: { parts: [{ text: AI_SYSTEM }] },
-    contents: [{ role: 'user', parts: [{ text: harianPrompt(date) }] }],
+    contents: [{ role: 'user', parts: [{ text: harianPrompt(date, status, ket) }] }],
     generationConfig: {
       temperature: 0.9,
       maxOutputTokens: 8192,
@@ -1101,6 +1177,7 @@ $('btnAi').addEventListener('click', async ev => {
   await withBusy(ev.currentTarget, async () => {
     msg('aiMsg', 'Gemini sedang menulis laporan…');
     const out = await generateHarian(date);
+    lastAi[date] = out;
     $('hRingkasan').value = out.ringkasan;
     $('hPembelajaran').value = out.pembelajaran;
     $('hKendala').value = out.kendala;
@@ -1119,6 +1196,9 @@ $('formHarian').addEventListener('submit', async ev => {
     kendala: $('hKendala').value.trim(),
     diperbarui: new Date().toISOString()
   };
+  // "auto": tulisan AI yang tidak diubah; boleh ditulis ulang otomatis saat kegiatan bertambah.
+  const ai = lastAi[date] || (harian[date] && harian[date].auto ? harian[date] : null);
+  rec.auto = Boolean(ai && ['ringkasan', 'pembelajaran', 'kendala'].every(k => (ai[k] || '') === rec[k]));
   if (!rec.keterangan) delete rec.keterangan;
   const empty = rec.status === 'Hadir' && !rec.ringkasan && !rec.pembelajaran && !rec.kendala;
   await withBusy($('btnSaveHarian'), async () => {
@@ -1136,6 +1216,132 @@ $('formHarian').addEventListener('submit', async ev => {
     renderHarianForm();
     toast(empty ? 'Laporan harian dihapus.' : 'Laporan harian tersimpan. Menunggu website diperbarui…');
   }, 'harianMsg');
+});
+
+// ---------- Ringkasan otomatis ----------
+// Setelah kegiatan disimpan: laporan harian tanggal itu ditulis ulang oleh AI
+// (kecuali sudah Anda edit sendiri), lalu ringkasan dasbor diperbarui.
+const RINGKASAN_PATH = 'data/ringkasan.json';
+
+const SUMMARY_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    mingguIni: { type: 'STRING' },
+    sorotan: { type: 'ARRAY', items: { type: 'STRING' } },
+    keseluruhan: { type: 'STRING' }
+  },
+  required: ['mingguIni', 'sorotan', 'keseluruhan'],
+  propertyOrdering: ['mingguIni', 'sorotan', 'keseluruhan']
+};
+
+const SUMMARY_SYSTEM = `Kamu menulis ringkasan singkat untuk halaman publik dokumentasi magang seorang peserta. Pembacanya atasan dan pengunjung, jadi tulis dalam bahasa Indonesia yang natural, hangat, dan ringkas, dengan sudut pandang orang ketiga (sebut "peserta" atau nama depannya). Tanpa poin-poin, tanpa emoji, tanpa frasa klise.
+
+- mingguIni: 2-3 kalimat tentang apa saja yang dikerjakan pada minggu terbaru.
+- sorotan: 3 frasa pendek (masing-masing maksimal 6 kata) berisi hal paling menonjol minggu terbaru.
+- keseluruhan: 2-3 kalimat tentang perjalanan magang sejauh ini.
+
+Hanya gunakan fakta dari data. Jangan mengarang kegiatan, angka, atau nama.`;
+
+function summaryPrompt() {
+  const c = CFG || {};
+  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].sort();
+  if (!dates.length) return '';
+  const cfg = { tanggalMulai: c.tanggalMulai || dates[0] };
+  const lastWeek = mingguKe(cfg, dates[dates.length - 1]);
+  const lines = dates.map(d => {
+    const w = mingguKe(cfg, d);
+    const r = harian[d] || {};
+    const titles = dayEntries(d).map(e => e.judul).join('; ');
+    const st = ['Sakit', 'Izin'].includes(r.status) ? ` [${r.status}]` : '';
+    const detail = w === lastWeek && r.ringkasan ? ` Ringkasan: ${r.ringkasan}` : '';
+    return `- Minggu ${w}, ${d}${st}: ${titles || '(tidak ada kegiatan)'}${detail}`;
+  });
+  return [
+    `Peserta: ${c.nama || 'peserta'} (${c.posisi || 'peserta magang'}) di ${c.instansi || 'instansi'}. Minggu terbaru: ${lastWeek}.`,
+    'Data kegiatan per hari:',
+    ...lines.slice(-60)
+  ].join('\n');
+}
+
+async function generateSummary() {
+  const prompt = summaryPrompt();
+  if (!prompt) return null;
+  const data = await gemini(`models/${encodeURIComponent(currentModel())}:generateContent`, {
+    systemInstruction: { parts: [{ text: SUMMARY_SYSTEM }] },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.8, maxOutputTokens: 4096, responseMimeType: 'application/json', responseSchema: SUMMARY_SCHEMA }
+  });
+  const cand = (data.candidates || [])[0];
+  if (!cand || (cand.finishReason && cand.finishReason !== 'STOP')) throw new Error('Gemini tidak menyelesaikan ringkasan.');
+  const out = JSON.parse(((cand.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join(''));
+  const dates = [...entries.map(e => e.tanggal)].sort();
+  return {
+    diperbarui: new Date().toISOString(),
+    minggu: dates.length ? mingguKe({ tanggalMulai: (CFG && CFG.tanggalMulai) || dates[0] }, dates[dates.length - 1]) : 0,
+    mingguIni: String(out.mingguIni || '').trim(),
+    sorotan: (Array.isArray(out.sorotan) ? out.sorotan : []).map(x => String(x).trim()).filter(Boolean).slice(0, 4),
+    keseluruhan: String(out.keseluruhan || '').trim()
+  };
+}
+
+let autoAiRunning = null;
+async function autoAi(date) {
+  if (!AI_KEY) return;
+  if (autoAiRunning) await autoAiRunning.catch(() => {});
+  autoAiRunning = (async () => {
+    msg('autoAiMsg', '✨ AI sedang meringkas kegiatan…');
+    try {
+      const rec = harian[date];
+      const canRewrite = !rec || rec.auto !== false;
+      const report = canRewrite && dayEntries(date).length ? await generateHarian(date, (rec && rec.status) || 'Hadir', (rec && rec.keterangan) || '') : null;
+      if (report) lastAi[date] = report;
+      if (report) Object.assign(harian, { [date]: { ...(rec || {}), status: (rec && rec.status) || 'Hadir', ...report, auto: true, diperbarui: new Date().toISOString() } });
+      const summary = await generateSummary().catch(() => null);
+      if (!report && !summary) return;
+      let latestH;
+      await commit(`Ringkasan AI ${date}`, async base => {
+        const changes = [];
+        if (report) {
+          latestH = await readRepoJSON(HARIAN_PATH, base, {});
+          if (!latestH || typeof latestH !== 'object' || Array.isArray(latestH)) latestH = {};
+          const cur = latestH[date];
+          if (!cur || cur.auto !== false) latestH[date] = harian[date];
+          const sorted = Object.fromEntries(Object.entries(latestH).sort(([a], [b]) => b.localeCompare(a)));
+          changes.push({ path: HARIAN_PATH, content: JSON.stringify(sorted, null, 2) + '\n' });
+        }
+        if (summary) {
+          const old = await readRepoJSON(RINGKASAN_PATH, base, {});
+          const mingguan = { ...((old && old.mingguan) || {}), [summary.minggu]: summary.mingguIni };
+          changes.push({ path: RINGKASAN_PATH, content: JSON.stringify({ ...summary, mingguan }, null, 2) + '\n' });
+        }
+        return changes;
+      });
+      if (latestH) harian = latestH;
+      renderHarianList();
+      if ($('hTanggal').value === date) renderHarianForm();
+      toast('✨ Laporan harian dan ringkasan dasbor diperbarui oleh AI.');
+    } catch (e) {
+      toast(`Kegiatan tersimpan, tetapi ringkasan AI gagal: ${e.message}`, true);
+    } finally {
+      msg('autoAiMsg', '');
+    }
+  })();
+  return autoAiRunning;
+}
+
+$('btnSummary').addEventListener('click', async ev => {
+  if (!AI_KEY) return toast('Atur kunci API Gemini terlebih dahulu.', true);
+  await withBusy(ev.currentTarget, async () => {
+    msg('aiMsg', 'AI sedang menyusun ringkasan dasbor…');
+    const summary = await generateSummary();
+    if (!summary) throw new Error('Belum ada kegiatan untuk diringkas.');
+    await commit('Ringkasan AI dasbor', async base => {
+      const old = await readRepoJSON(RINGKASAN_PATH, base, {});
+      const mingguan = { ...((old && old.mingguan) || {}), [summary.minggu]: summary.mingguIni };
+      return [{ path: RINGKASAN_PATH, content: JSON.stringify({ ...summary, mingguan }, null, 2) + '\n' }];
+    });
+    toast('Ringkasan dasbor diperbarui.');
+  }, 'aiMsg');
 });
 
 // ---------- Pengaturan kunci API Gemini ----------
@@ -1183,6 +1389,7 @@ $('formAi').addEventListener('submit', async ev => {
     await decryptToken(stored.enc, $('aiPass').value);   // memastikan kata sandi panel benar
     const prev = AI_KEY;
     AI_KEY = key;
+    saveSession();
     let models;
     try {
       models = await loadAiModels();                      // sekaligus menguji kunci
@@ -1385,7 +1592,7 @@ window.addEventListener('beforeunload', ev => {
 // ================= Mulai =================
 (function init() {
   if (!window.crypto || !crypto.subtle) {
-    document.querySelector('.admin-main').innerHTML = '<p class="empty">Panel admin harus dibuka lewat HTTPS.</p>';
+    document.querySelector('main').innerHTML = '<p class="empty">Panel admin harus dibuka lewat HTTPS.</p>';
     return;
   }
   const stored = readStore();
@@ -1393,6 +1600,13 @@ window.addEventListener('beforeunload', ev => {
   if (stored && stored.enc) {
     S = { owner: stored.owner, repo: stored.repo, branch: stored.branch || 'main' };
     showUnlock();
+    // Sesi yang masih berlaku: langsung masuk tanpa kata sandi.
+    loadSession().then(sess => {
+      if (!sess || !sess.token) return;
+      TOKEN = sess.token;
+      AI_KEY = sess.ai || '';
+      enterApp().catch(e => toast(e.message, true));
+    });
   } else if (legacy) {
     S = { owner: legacy.owner || '', repo: legacy.repo || '', branch: legacy.branch || 'main' };
     showSetup('Versi sebelumnya menyimpan token tanpa enkripsi. Token itu sudah dihapus dari penyimpanan browser dan dipindahkan ke kolom di bawah. Buat kata sandi panel supaya token disimpan terenkripsi.');
