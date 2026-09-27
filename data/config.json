@@ -1,5 +1,5 @@
 {
-  "repo": "Rianfirnanda/laporanmaganghub",
+  "repo": "rianfirnanda/laporanmaganghub",
   "nama": "Rian Firnanda Irsyadani",
   "posisi": "Asisten Pranata Komputer",
   "instansi": "BPS Kabupaten Bengkulu Tengah",
@@ -8,10 +8,15 @@
   "tanggalSelesai": "2027-03-20",
   "fotoProfil": "uploads/profil/foto-mujcqj7a.jpg",
   "judulSitus": "Laporan Magang | Rian Firnanda",
-  "warnaTema": "#1a5cff",
+  "warnaTema": "#1d4ed8",
   "tampilkanLinkAdmin": true,
   "footer": {
     "teks": "",
+    "kredit": {
+      "tampil": false,
+      "teks": "",
+      "url": "https://rianfirnanda.vercel.app"
+    },
     "judulTautan": "",
     "bagian": [
       {
@@ -99,5 +104,8 @@
   "notifikasi": {
     "vapidPublik": "BJSzmKzltC3Z1Ul_SJovxZZ0jnxyVzblMre4YChwnPP8FDi8e8hjMGK7XkpaSlL2ej9T7Q9f-QUP_HI-WNJJdJE",
     "dibuat": "2026-09-27T15:10:45.357Z"
-  }
+  },
+  "divisi": "",
+  "kotaTtd": "",
+  "zonaWaktu": "Asia/Jakarta"
 }
