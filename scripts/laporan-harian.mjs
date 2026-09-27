@@ -33,7 +33,7 @@ const label = d => {
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
 
 const recent = [...new Set(entries.map(e => e.tanggal))].filter(d => d <= today).sort().slice(-7);
-const todo = recent.filter(d => ai.perluLaporanAi(entries, harian, d)).sort().reverse().slice(0, 5);
+const todo = recent.filter(d => ai.perluLaporanAi(entries, harian, d, config.hariLibur)).sort().reverse().slice(0, 5);
 if (!todo.length) {
   console.log('Semua laporan harian sudah terbaru.');
   process.exit(0);

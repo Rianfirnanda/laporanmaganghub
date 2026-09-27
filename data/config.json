@@ -29,5 +29,67 @@
   "logoInstansi": "uploads/brand/logo-mujei8zm.png",
   "drive": {
     "clientId": "19749227616-7egmua5b0fai2f4md48b3u2fouarpt4r.apps.googleusercontent.com"
-  }
+  },
+  "hariLibur": [
+    {
+      "tanggal": "2026-12-24",
+      "nama": "Cuti bersama Hari Raya Natal",
+      "jenis": "cuti"
+    },
+    {
+      "tanggal": "2026-12-25",
+      "nama": "Hari Raya Natal",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-01-01",
+      "nama": "Tahun Baru 2027 Masehi",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-01-05",
+      "nama": "Isra Mikraj Nabi Muhammad SAW",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-02-05",
+      "nama": "Cuti bersama Tahun Baru Imlek",
+      "jenis": "cuti"
+    },
+    {
+      "tanggal": "2027-02-06",
+      "nama": "Tahun Baru Imlek 2578 Kongzili",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-03-08",
+      "nama": "Hari Suci Nyepi Tahun Baru Saka 1949",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-03-09",
+      "nama": "Cuti bersama Idulfitri 1448 H",
+      "jenis": "cuti"
+    },
+    {
+      "tanggal": "2027-03-10",
+      "nama": "Idulfitri 1448 H",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-03-11",
+      "nama": "Idulfitri 1448 H",
+      "jenis": "libur"
+    },
+    {
+      "tanggal": "2027-03-12",
+      "nama": "Cuti bersama Idulfitri 1448 H",
+      "jenis": "cuti"
+    },
+    {
+      "tanggal": "2027-03-15",
+      "nama": "Cuti bersama Idulfitri 1448 H",
+      "jenis": "cuti"
+    }
+  ]
 }

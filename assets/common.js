@@ -41,12 +41,39 @@ function formatPendek(date) {
   return `${date.getDate()} ${BULAN_PENDEK[date.getMonth()]}`;
 }
 
-// ---------- Hari kerja (Senin–Jumat) ----------
-// Magang dihitung per hari kerja: Sabtu/Minggu tidak masuk hitungan hari,
-// minggu, statistik, maupun laporan mingguan.
-function isHariKerja(dateStr) {
+// ---------- Hari kerja (Senin–Jumat, di luar libur nasional) ----------
+// Magang dihitung per hari kerja: Sabtu/Minggu serta libur nasional dan cuti
+// bersama (config.hariLibur, diatur di panel admin) tidak masuk hitungan hari,
+// statistik, maupun laporan mingguan.
+const HARI_LIBUR = new Map();   // "YYYY-MM-DD" -> { nama, jenis: 'libur' | 'cuti' }
+
+function aturHariLibur(list) {
+  HARI_LIBUR.clear();
+  (Array.isArray(list) ? list : []).forEach(h => {
+    if (h && /^\d{4}-\d{2}-\d{2}$/.test(h.tanggal)) {
+      HARI_LIBUR.set(h.tanggal, { nama: String(h.nama || 'Libur nasional').slice(0, 80), jenis: h.jenis === 'cuti' ? 'cuti' : 'libur' });
+    }
+  });
+}
+
+function infoLibur(dateStr) {
+  return HARI_LIBUR.get(dateStr) || null;
+}
+
+function isAkhirPekan(dateStr) {
   const d = parseDate(dateStr).getDay();
-  return d >= 1 && d <= 5;
+  return d === 0 || d === 6;
+}
+
+function isHariKerja(dateStr) {
+  return !isAkhirPekan(dateStr) && !HARI_LIBUR.has(dateStr);
+}
+
+// Label untuk hari yang tidak dihitung, mis. "Akhir pekan" / "Libur: Hari Raya Natal".
+function labelBukanHariKerja(dateStr) {
+  const l = infoLibur(dateStr);
+  if (l && !isAkhirPekan(dateStr)) return `${l.jenis === 'cuti' ? 'Cuti bersama' : 'Libur nasional'}: ${l.nama.replace(/^cuti bersama\s*/i, '')}`;
+  return 'Akhir pekan';
 }
 
 // Senin pada minggu kalender tanggal itu.
@@ -56,8 +83,15 @@ function seninDari(dateStr) {
   return d;
 }
 
-// Jumlah hari Senin–Jumat dari a sampai b (inklusif).
+// Jumlah hari kerja dari a sampai b (inklusif): Senin–Jumat dikurangi libur.
 function hitungHariKerja(a, b) {
+  if (b < a) return 0;
+  let libur = 0;
+  HARI_LIBUR.forEach((_, d) => { if (d >= a && d <= b && !isAkhirPekan(d)) libur++; });
+  return hitungSeninJumat(a, b) - libur;
+}
+
+function hitungSeninJumat(a, b) {
   if (b < a) return 0;
   const days = daysBetween(a, b) + 1;
   const full = Math.floor(days / 7);

@@ -385,7 +385,7 @@ async function enterApp() {
   resetForm();
   renderAi();
   refreshAiModels();
-  if (!$('hTanggal').value) $('hTanggal').value = todayStr();
+  if (!$('hTanggal').value) $('hTanggal').value = wibParts().tanggal;
   startServerClock();
   handleShortcut();
   await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
@@ -565,6 +565,8 @@ function addFiles(files) {
       if (!newPhotos.includes(item)) return;          // sudah dibatalkan
       try {
         item.blob = await shrinkPhoto(file);
+        // Thumbnail kecil untuk dasbor (lebih ringan dimuat di HP).
+        item.thumb = await shrinkPhoto(item.blob, { maxSide: 480, quality: 0.72 }).catch(() => null);
         item.url = URL.createObjectURL(item.blob);
         item.state = 'ok';
       } catch (e) {
@@ -898,14 +900,26 @@ $('formEntry').addEventListener('submit', async ev => {
     const ready = newPhotos.filter(p => p.state === 'ok');
     const skipped = newPhotos.filter(p => p.state !== 'ok');
     if (ready.length) msg('saveMsg', `Mengunggah foto 0/${ready.length}…`);
-    const fileChanges = await mapLimit(ready, UPLOAD_CONCURRENCY, async (p, i) => {
+    const results = await mapLimit(ready, UPLOAD_CONCURRENCY, async (p, i) => {
       const sha = await uploadBlob(await blobToBase64(p.blob));
+      const thumbSha = p.thumb ? await uploadBlob(await blobToBase64(p.thumb)).catch(() => null) : null;
       msg('saveMsg', `Mengunggah foto ${++done}/${ready.length}…`);
       p.path = `uploads/${y}/${m}/${d}/${id}-${stamp}${i}.jpg`;
-      return { path: p.path, sha };
+      return { path: p.path, sha, thumbPath: thumbSha ? p.path.replace(/\.jpg$/, '-t.jpg') : '', thumbSha };
     });
-    const uploaded = fileChanges.map(c => c.path);
-    removedPhotos.forEach(path => fileChanges.push({ path, delete: true }));
+    const uploaded = results.map(c => c.path);
+    const prevEntry = entries.find(x => x.id === id);
+    const oldThumbs = (prevEntry && prevEntry.fotoKecil) || {};
+    const fileChanges = [
+      ...results.map(({ path, sha }) => ({ path, sha })),
+      ...results.filter(c => c.thumbSha).map(c => ({ path: c.thumbPath, sha: c.thumbSha })),
+      ...removedPhotos.map(path => ({ path, delete: true })),
+      ...removedPhotos.map(path => safePath(oldThumbs[path])).filter(Boolean).map(path => ({ path, delete: true }))
+    ];
+    // Thumbnail per foto: { "uploads/…jpg": "uploads/…-t.jpg" }.
+    const fotoKecil = {};
+    keptPhotos.forEach(f => { if (safePath(oldThumbs[f])) fotoKecil[f] = oldThumbs[f]; });
+    results.forEach(c => { if (c.thumbPath) fotoKecil[c.path] = c.thumbPath; });
 
     const data = {
       id,
@@ -928,6 +942,7 @@ $('formEntry').addEventListener('submit', async ev => {
     const fotoDrive = {};
     const oldDrive = (prev && prev.fotoDrive) || {};
     keptPhotos.forEach(f => { if (oldDrive[f]) fotoDrive[f] = oldDrive[f]; });
+    if (Object.keys(fotoKecil).length) data.fotoKecil = fotoKecil;
     if (driveRes) driveItems.forEach((p, i) => { if (p.path && driveRes.ids[i]) fotoDrive[p.path] = driveRes.ids[i]; });
     if (Object.keys(fotoDrive).length) data.fotoDrive = fotoDrive;
 
@@ -967,7 +982,7 @@ async function deleteEntry(id) {
     await commit(`Hapus kegiatan ${e.tanggal}: ${e.judul}`, async base => {
       latest = await readRepoJSON(DATA_PATH, base, []);
       const target = latest.find(x => x.id === id);
-      const photos = target ? (target.foto || []).filter(safePath) : [];
+      const photos = target ? [...(target.foto || []), ...Object.values(target.fotoKecil || {})].filter(safePath) : [];
       latest = latest.filter(x => x.id !== id);
       return [
         ...photos.map(path => ({ path, delete: true })),
@@ -983,6 +998,7 @@ async function deleteEntry(id) {
 
 function renderList() {
   renderDriveSync();
+  renderThumbInfo();
   renderHarianEntries();
   const q = $('listCari').value.trim().toLowerCase();
   const list = sortEntries(entries).filter(e => !q || `${e.judul} ${e.keterangan} ${e.tanggal}`.toLowerCase().includes(q));
@@ -996,7 +1012,8 @@ function renderList() {
   $('entryList').innerHTML = list.map(e => {
     const head = e.tanggal !== lastDate ? `<h3 class="list-date">${esc(formatTanggal(e.tanggal))}</h3>` : '';
     lastDate = e.tanggal;
-    const first = rawUrl((e.foto || [])[0]);
+    const f0 = (e.foto || [])[0];
+    const first = rawUrl((e.fotoKecil && e.fotoKecil[f0]) || f0);
     const thumb = first ? `<img src="${esc(first)}" alt="" loading="lazy">` : `<div class="no-thumb">${icon('image')}</div>`;
     const sesi = ['Pagi', 'Siang', 'Sore'].includes(e.sesi) ? e.sesi : sesiDariJam(e.jam);
     return `${head}<div class="list-item${e.id === editingId ? ' editing' : ''}">
@@ -1079,6 +1096,7 @@ for (const [key, slot] of Object.entries(IMAGE_SLOTS)) {
 async function loadConfig() {
   try {
     CFG = await readRepoJSON(CONFIG_PATH, S.branch, {});
+    aturHariLibur(CFG.hariLibur);
     adoptSharedDrive();
     fillConfigForm();
     renderHero(true);
@@ -1110,6 +1128,9 @@ function fillConfigForm() {
   $('cLinks').replaceChildren();
   (f.tautan || []).forEach(l => addRow('cLinks', 'tplLink', { '.r-label': l.label, '.r-url': l.url }));
   $('cPortofolio').value = c.portofolio ?? DEFAULT_PORTOFOLIO;
+  $('cLibur').replaceChildren();
+  (Array.isArray(c.hariLibur) ? c.hariLibur : []).forEach(h => addRow('cLibur', 'tplLibur', { '.r-tanggal': h.tanggal, '.r-nama': h.nama, '.r-jenis': h.jenis === 'cuti' ? 'cuti' : 'libur' }));
+  renderLiburInfo();
   resetImageSlots();
   renderImageSlots();
 }
@@ -1121,11 +1142,67 @@ function addRow(listId, tplId, values = {}) {
   return row;
 }
 
-['cSections', 'cLinks'].forEach(id => $(id).addEventListener('click', ev => {
+// ---------- Hari libur nasional & cuti bersama ----------
+// SKB 3 Menteri: libur nasional & cuti bersama 2026 (Menag 1497/2025) dan
+// 2027 (Menag 1205/2026) yang jatuh di masa magang umumnya (Sep 2026–Mar 2027).
+const LIBUR_SKB = [
+  ['2026-12-24', 'Cuti bersama Hari Raya Natal', 'cuti'],
+  ['2026-12-25', 'Hari Raya Natal', 'libur'],
+  ['2027-01-01', 'Tahun Baru 2027 Masehi', 'libur'],
+  ['2027-01-05', 'Isra Mikraj Nabi Muhammad SAW', 'libur'],
+  ['2027-02-05', 'Cuti bersama Tahun Baru Imlek', 'cuti'],
+  ['2027-02-06', 'Tahun Baru Imlek 2578 Kongzili', 'libur'],
+  ['2027-03-08', 'Hari Suci Nyepi Tahun Baru Saka 1949', 'libur'],
+  ['2027-03-09', 'Cuti bersama Idulfitri 1448 H', 'cuti'],
+  ['2027-03-10', 'Idulfitri 1448 H', 'libur'],
+  ['2027-03-11', 'Idulfitri 1448 H', 'libur'],
+  ['2027-03-12', 'Cuti bersama Idulfitri 1448 H', 'cuti'],
+  ['2027-03-15', 'Cuti bersama Idulfitri 1448 H', 'cuti']
+];
+
+function readLiburForm() {
+  const seen = new Set();
+  return [...$('cLibur').querySelectorAll('.repeat-row')].map(r => ({
+    tanggal: r.querySelector('.r-tanggal').value,
+    nama: r.querySelector('.r-nama').value.trim(),
+    jenis: r.querySelector('.r-jenis').value === 'cuti' ? 'cuti' : 'libur'
+  })).filter(h => /^\d{4}-\d{2}-\d{2}$/.test(h.tanggal) && !seen.has(h.tanggal) && seen.add(h.tanggal))
+    .map(h => ({ ...h, nama: h.nama || (h.jenis === 'cuti' ? 'Cuti bersama' : 'Libur nasional') }))
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+}
+
+function renderLiburInfo() {
+  const list = readLiburForm();
+  const mulai = $('cMulai').value, selesai = $('cSelesai').value;
+  const kerja = list.filter(h => !isAkhirPekan(h.tanggal) && (!mulai || h.tanggal >= mulai) && (!selesai || h.tanggal <= selesai)).length;
+  $('liburInfo').textContent = list.length
+    ? `${list.length} tanggal · ${kerja} jatuh di hari kerja masa magang`
+    : 'Belum ada tanggal libur';
+}
+
+$('btnAddLibur').addEventListener('click', () => { addRow('cLibur', 'tplLibur').querySelector('input').focus(); renderLiburInfo(); });
+$('btnIsiLibur').addEventListener('click', () => {
+  const ada = new Set(readLiburForm().map(h => h.tanggal));
+  const mulai = $('cMulai').value || '0000', selesai = $('cSelesai').value || '9999';
+  let n = 0;
+  LIBUR_SKB.filter(([t]) => t >= mulai && t <= selesai && !ada.has(t)).forEach(([t, nama, jenis]) => {
+    addRow('cLibur', 'tplLibur', { '.r-tanggal': t, '.r-nama': nama, '.r-jenis': jenis });
+    n++;
+  });
+  const rows = [...$('cLibur').children].sort((a, b) => a.querySelector('.r-tanggal').value.localeCompare(b.querySelector('.r-tanggal').value));
+  $('cLibur').append(...rows);
+  renderLiburInfo();
+  toast(n ? `${n} tanggal libur ditambahkan. Klik "Simpan pengaturan" untuk menerapkan.` : 'Semua tanggal SKB untuk masa magang sudah ada.');
+});
+$('cLibur').addEventListener('input', renderLiburInfo);
+['cMulai', 'cSelesai'].forEach(id => $(id).addEventListener('change', renderLiburInfo));
+$('cLibur').addEventListener('change', renderLiburInfo);
+
+['cSections', 'cLinks', 'cLibur'].forEach(id => $(id).addEventListener('click', ev => {
   const b = ev.target.closest('button');
   if (!b) return;
   const row = b.closest('.repeat-row');
-  if (b.hasAttribute('data-remove')) row.remove();
+  if (b.hasAttribute('data-remove')) { row.remove(); renderLiburInfo(); }
   if (b.dataset.move === '-1' && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
   if (b.dataset.move === '1' && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
 }));
@@ -1174,6 +1251,7 @@ function readConfigForm() {
     warnaTema: safeColor($('cWarna').value),
     tampilkanLinkAdmin: $('cAdminLink').checked,
     portofolio: $('cPortofolio').value.trim(),
+    hariLibur: readLiburForm(),
     footer: {
       teks: $('cFooterTeks').value.trim(),
       judulTautan: $('cJudulTautan').value.trim(),
@@ -1216,6 +1294,7 @@ $('formConfig').addEventListener('submit', async ev => {
     msg('configMsg', 'Menyimpan ke GitHub…');
     await commit('Perbarui profil dan tampilan website', async () => changes);
     CFG = cfg;
+    aturHariLibur(CFG.hariLibur);
     fillConfigForm();
     renderHero(true);
     toast('Pengaturan tersimpan. Menunggu website diperbarui…');
@@ -1528,7 +1607,7 @@ let autoAiRunning = null;
 let autoAiFailedAt = 0;
 
 function tanggalPerluAi(dates) {
-  return [...new Set(dates)].filter(d => perluLaporanAi(entries, harian, d)).sort().reverse();
+  return [...new Set(dates)].filter(d => perluLaporanAi(entries, harian, d, (CFG || {}).hariLibur)).sort().reverse();
 }
 
 function autoAi(dates, { quiet = false } = {}) {
@@ -1829,6 +1908,47 @@ async function copyToDrive(files, entry, msgId = 'saveMsg', nums = null) {
   if (!ids.some(Boolean) && lastErr) throw lastErr;
   return { ids, error: lastErr };
 }
+
+// ---------- Foto kecil (thumbnail) untuk foto lama ----------
+function photosWithoutThumb() {
+  return entries.flatMap(e => (e.foto || []).filter(safePath)
+    .filter(f => !(e.fotoKecil && safePath(e.fotoKecil[f])))
+    .map(f => ({ entry: e, path: f })));
+}
+
+function renderThumbInfo() {
+  const total = entries.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+  const todo = photosWithoutThumb().length;
+  $('thumbInfo').textContent = !total ? 'Belum ada foto' : todo ? `${todo} dari ${total} foto belum punya versi kecil` : `Semua ${total} foto sudah dioptimalkan`;
+  $('btnThumbs').hidden = !todo;
+}
+
+$('btnThumbs').addEventListener('click', ev => withBusy(ev.currentTarget, async () => {
+  const todo = photosWithoutThumb();
+  const made = [];   // { id, path, thumbPath, sha }
+  let done = 0;
+  await mapLimit(todo, 2, async ({ entry, path }) => {
+    try {
+      const small = await shrinkPhoto(await fetchPhoto(path), { maxSide: 480, quality: 0.72 });
+      const sha = await uploadBlob(await blobToBase64(small));
+      made.push({ id: entry.id, path, thumbPath: path.replace(/\.[a-z0-9]+$/i, '-t.jpg'), sha });
+    } catch { /* lewati foto yang gagal */ }
+    msg('thumbMsg', `Memproses ${++done}/${todo.length} foto…`);
+  });
+  if (made.length) {
+    let latest;
+    await commit(`Optimasi ${made.length} foto (versi kecil)`, async base => {
+      latest = await readRepoJSON(DATA_PATH, base, []);
+      latest.forEach(e => made.filter(m => m.id === e.id && (e.foto || []).includes(m.path))
+        .forEach(m => { e.fotoKecil = { ...(e.fotoKecil || {}), [m.path]: m.thumbPath }; }));
+      return [...made.map(m => ({ path: m.thumbPath, sha: m.sha })), { path: DATA_PATH, content: JSON.stringify(sortEntries(latest), null, 2) + '\n' }];
+    });
+    entries = latest;
+    renderList();
+  }
+  renderThumbInfo();
+  toast(made.length === todo.length ? `✅ ${made.length} foto dioptimalkan.` : `${made.length} foto dioptimalkan, ${todo.length - made.length} gagal. Coba lagi nanti.`, made.length !== todo.length);
+}, 'thumbMsg'));
 
 // ---------- Sinkronkan foto lama ke Drive ----------
 function unsyncedPhotos() {

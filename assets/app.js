@@ -25,6 +25,7 @@ async function init() {
   ENTRIES = (Array.isArray(ENTRIES) ? ENTRIES : []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
   if (!HARIAN || typeof HARIAN !== 'object' || Array.isArray(HARIAN)) HARIAN = {};
   for (const d of Object.keys(HARIAN)) if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !HARIAN[d]) delete HARIAN[d];
+  aturHariLibur(CONFIG.hariLibur);
   renderProfile();
   renderSidebar();
   renderKpis();
@@ -130,9 +131,13 @@ function renderSidebar() {
     ['Selesai', formatTanggal(CONFIG.tanggalSelesai, false)],
     ['Durasi', `${daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1} hari · ${total} hari kerja`],
     ['Jumlah minggu', `${mingguKe(CONFIG, CONFIG.tanggalSelesai)} minggu`],
-    ['Hari kerja', 'Senin – Jumat']
+    ['Hari kerja', HARI_LIBUR.size ? 'Senin – Jumat, di luar libur nasional' : 'Senin – Jumat']
   ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
 
+  const today = wibParts(new Date()).tanggal;
+  const next = [...HARI_LIBUR].filter(([d]) => d >= today && !isAkhirPekan(d) && d <= CONFIG.tanggalSelesai).sort(([a], [b]) => a.localeCompare(b))[0];
+  $('nextLibur').hidden = !next;
+  if (next) $('nextLibur').textContent = `Libur berikutnya: ${formatTanggal(next[0])} · ${next[1].nama}`;
   const latest = ENTRIES.reduce((m, e) => (`${e.tanggal} ${e.jam || ''}` > m ? `${e.tanggal} ${e.jam || ''}` : m), '');
   const stamp = ENTRIES.map(e => e.dicatat).filter(Boolean).sort().pop();
   $('updated').textContent = stamp ? `Terakhir diperbarui ${formatWaktuWib(new Date(stamp))}`
@@ -167,7 +172,7 @@ function renderKpis() {
     <div><strong>${value}</strong><span class="kpi-label">${label}</span><small>${sub}</small></div>
   </div>`;
   $('kpis').innerHTML = [
-    kpi('grid', KERJA.length, 'Kegiatan', !isHariKerja(today) ? 'Akhir pekan · tidak dihitung' : hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
+    kpi('grid', KERJA.length, 'Kegiatan', !isHariKerja(today) ? `${esc(labelBukanHariKerja(today))} · tidak dihitung` : hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
     kpi('calendar', hari, 'Hari terdokumentasi', kerja ? `${pct}% dari ${kerja} hari kerja` : 'Belum dimulai'),
     kpi('image', foto, 'Foto dokumentasi', foto ? `${sync === foto ? 'Semua' : `${sync} dari ${foto}`} di Google Drive` : 'Belum ada foto'),
     kpi('badge', hadir, 'Hari hadir', sakit || izin ? `Sakit ${sakit} · Izin ${izin}` : 'Tanpa sakit/izin')
@@ -267,7 +272,9 @@ function fillDateFilter() {
 
 function bindUI() {
   $('filterMinggu').addEventListener('input', () => { fillDateFilter(); render(); });
-  ['filterTanggal', 'filterCari'].forEach(id => $(id).addEventListener('input', render));
+  $('filterTanggal').addEventListener('input', render);
+  let cariTimer = 0;
+  $('filterCari').addEventListener('input', () => { clearTimeout(cariTimer); cariTimer = setTimeout(render, 180); });
   $('filterCari').addEventListener('keydown', ev => { if (ev.key === 'Escape') { $('filterCari').value = ''; render(); } });
   $('btnReset').addEventListener('click', () => {
     $('filterMinggu').value = '';
@@ -409,6 +416,11 @@ function weekLabel(w) {
   return `${formatPendek(start)} – ${formatPendek(end)} ${end.getFullYear()}`;
 }
 
+// Thumbnail 480 px (bila ada) untuk tampilan kecil; lightbox tetap memakai foto penuh.
+function thumbOf(e, src) {
+  return safePath(e.fotoKecil && typeof e.fotoKecil === 'object' ? e.fotoKecil[src] : '') || src;
+}
+
 function inDrive(e, src) {
   return Boolean(e.fotoDrive && typeof e.fotoDrive === 'object' && e.fotoDrive[src]);
 }
@@ -439,7 +451,7 @@ function renderHarian(list) {
           <span class="head-icon">${icon('calendar')}</span>
           <div class="head-text">
             <h3>${formatTanggal(tgl)}</h3>
-            <span>${isHariKerja(tgl) ? `Hari kerja ke-${hariKe(CONFIG, tgl)}` : 'Akhir pekan · tidak dihitung'}${items.length ? ` · ${items.length} kegiatan · ${nFoto} foto` : ''}</span>
+            <span>${isHariKerja(tgl) ? `Hari kerja ke-${hariKe(CONFIG, tgl)}` : `${esc(labelBukanHariKerja(tgl))} · tidak dihitung`}${items.length ? ` · ${items.length} kegiatan · ${nFoto} foto` : ''}</span>
           </div>
           <div class="day-actions">
             ${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span>`
@@ -461,7 +473,7 @@ function renderStep(e) {
   const all = (e.foto || []).map(safePath).filter(Boolean);
   const idx = all.map(src => addPhoto(src, e));
   const photos = all.slice(0, 3).map((src, i) =>
-    `<button class="photo" data-lb="${idx[i]}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${i === 2 && all.length > 3 ? `<span class="photo-more">+${all.length - 3}</span>` : driveChip(e, src)}</button>`).join('');
+    `<button class="photo" data-lb="${idx[i]}" type="button"><img src="${esc(thumbOf(e, src))}" alt="${esc(e.judul)}" loading="lazy" decoding="async">${i === 2 && all.length > 3 ? `<span class="photo-more">+${all.length - 3}</span>` : driveChip(e, src)}</button>`).join('');
   return `<li class="step">
     <span class="step-dot">${icon('check')}</span>
     <div class="step-body">
@@ -513,7 +525,7 @@ function renderGaleri(list) {
   for (const e of list) {
     for (const src of (e.foto || []).map(safePath).filter(Boolean)) {
       items.push(`<button class="gallery-item" data-lb="${addPhoto(src, e)}" type="button">
-        <img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy">${driveChip(e, src)}
+        <img src="${esc(thumbOf(e, src))}" alt="${esc(e.judul)}" loading="lazy" decoding="async">${driveChip(e, src)}
         <span class="gallery-cap"><small>${esc(formatTanggal(e.tanggal, false))}</small>${esc(e.judul)}</span>
       </button>`);
     }
@@ -548,7 +560,7 @@ function renderRekap(list) {
         </div>
         <ul class="recap-list">${[...days].map(([tgl, items]) => `<li>
           <strong>${esc(formatTanggal(tgl))}</strong>
-          <span>${!isHariKerja(tgl) ? '<span class="pill">Akhir pekan · tidak dihitung</span> ' : ''}${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span> ` : ''}${items.map(e => esc(e.judul)).join(' · ')}</span>
+          <span>${!isHariKerja(tgl) ? `<span class="pill">${esc(labelBukanHariKerja(tgl))} · tidak dihitung</span> ` : ''}${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span> ` : ''}${items.map(e => esc(e.judul)).join(' · ')}</span>
         </li>`).join('')}</ul>
         <div class="actions">
           <button class="btn btn-primary btn-sm" type="button" data-week="${w}">${icon('eye')} Lihat detail</button>
