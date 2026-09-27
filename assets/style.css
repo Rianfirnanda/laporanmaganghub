@@ -705,3 +705,16 @@ a.lokasi:hover { color: var(--accent-ink); text-decoration: underline; }
 .pair-code strong { font: 800 26px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; color: var(--accent-ink); }
 .pair-code small { color: var(--muted); font-size: 12.5px; }
 #pairInput { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+/* ---------- Presisi tampilan HP ---------- */
+.kv dt, .kv dd { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  /* Label di atas nilai agar teks panjang (nama repo, dsb.) tidak menembus kartu. */
+  .kv-wide { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .kv-wide dt { font-size: 12.5px; margin-top: 10px; }
+  .kv-wide dt:first-child { margin-top: 0; }
+  /* Tab panel admin: empat tab selalu muat, ikon di atas label (tanpa geser). */
+  body.admin .tabbar-inner { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: auto; max-width: none; overflow: visible; gap: 4px; }
+  body.admin .tabbar-item { flex-direction: column; justify-content: center; gap: 3px; padding: 8px 2px; font-size: 11.5px; line-height: 1.2; text-align: center; white-space: nowrap; }
+  body.admin .tabbar-item .ic { width: 19px; height: 19px; }
+}
