@@ -19,6 +19,7 @@ const DATA_PATH = 'data/kegiatan.json';
 const CONFIG_PATH = 'data/config.json';
 const PBKDF2_ITERATIONS = 310000;
 const UPLOAD_CONCURRENCY = 3;
+const DEFAULT_PORTOFOLIO = 'https://rianfirnanda.vercel.app';
 const DEPLOY_POLL_MS = 4000;
 const DEPLOY_TIMEOUT_MS = 5 * 60000;
 const NAME_RE = /^[A-Za-z0-9._-]+$/;
@@ -197,6 +198,18 @@ function renderHero(open) {
     box.innerHTML = icon('lock');
   }
   $('heroTitle').textContent = open && CFG && CFG.nama ? CFG.nama : 'Panel Admin';
+  const ikon = open && rawUrl(CFG && CFG.ikonSitus);
+  const mark = document.querySelector('.navbar .brand-mark');
+  if (ikon) {
+    const img = document.createElement('img');
+    img.src = ikon;
+    img.alt = '';
+    mark.replaceChildren(img);
+    mark.classList.add('has-img');
+  } else {
+    mark.innerHTML = icon('file');
+    mark.classList.remove('has-img');
+  }
   $('heroBadge').textContent = open ? 'Panel Admin' : 'Laporan Magang';
   $('heroSub').textContent = open ? `${S.owner}/${S.repo} · branch ${S.branch}` : 'Kelola dokumentasi kegiatan harian';
 }
@@ -299,7 +312,7 @@ function lock(reason) {
   CFG = null;
   $('entryList').innerHTML = '<p class="empty">Memuat…</p>';
   resetForm();
-  profileState = { newFile: null, newUrl: '', remove: false };
+  resetImageSlots();
   if (readStore()) showUnlock(); else showSetup();
   if (reason) toast(reason);
 }
@@ -332,7 +345,7 @@ function loadImage(file) {
 }
 
 // Kompres ulang lewat canvas: ukuran kecil dan metadata EXIF (termasuk lokasi GPS) ikut terbuang.
-async function imageToBase64(file, { maxSide = 1600, square = false, quality = 0.82 } = {}) {
+async function imageToBase64(file, { maxSide = 1600, square = false, quality = 0.82, png = false } = {}) {
   const img = await loadImage(file);
   let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
   if (square) {
@@ -344,10 +357,12 @@ async function imageToBase64(file, { maxSide = 1600, square = false, quality = 0
   canvas.width = Math.round(sw * scale);
   canvas.height = Math.round(sh * scale);
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!png) {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-  const dataUrl = canvas.toDataURL('image/jpeg', quality);
+  const dataUrl = png ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
   return dataUrl.slice(dataUrl.indexOf(',') + 1);
 }
 
@@ -547,7 +562,59 @@ $('entryList').addEventListener('click', ev => {
 $('listCari').addEventListener('input', renderList);
 
 // ================= Profil & tampilan =================
-let profileState = { newFile: null, newUrl: '', remove: false };
+// Gambar yang bisa diganti dari tab Profil & Tampilan. Tiap slot punya
+// kolom di config.json, elemen pratinjau, dan cara pengolahan gambarnya.
+const IMAGE_SLOTS = {
+  fotoProfil: { label: 'foto profil', box: 'cfgAvatar', input: 'cfgFoto', remove: 'cfgFotoHapus', dir: 'profil/foto', ext: 'jpg',
+    opts: { maxSide: 480, square: true, quality: 0.88 }, fallback: () => inisial($('cNama').value) },
+  ikonSitus: { label: 'ikon website', box: 'cfgIkon', input: 'cfgIkonFile', remove: 'cfgIkonHapus', dir: 'brand/ikon', ext: 'png',
+    opts: { maxSide: 256, square: true, png: true }, fallback: () => icon('file') },
+  logoInstansi: { label: 'logo instansi', box: 'cfgLogo', input: 'cfgLogoFile', remove: 'cfgLogoHapus', dir: 'brand/logo', ext: 'png',
+    opts: { maxSide: 256, png: true }, fallback: () => esc(inisial($('cInstansi').value)) }
+};
+const imageState = {};   // key -> { newFile, newUrl, remove }
+
+function resetImageSlots() {
+  for (const key of Object.keys(IMAGE_SLOTS)) {
+    if (imageState[key] && imageState[key].newUrl) URL.revokeObjectURL(imageState[key].newUrl);
+    imageState[key] = { newFile: null, newUrl: '', remove: false };
+  }
+}
+resetImageSlots();
+
+function renderImageSlot(key) {
+  const slot = IMAGE_SLOTS[key];
+  const st = imageState[key];
+  const src = st.newUrl || (!st.remove && rawUrl(CFG && CFG[key]));
+  const box = $(slot.box);
+  if (src) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    box.replaceChildren(img);
+  } else {
+    box.innerHTML = slot.fallback();
+  }
+  $(slot.remove).hidden = !src;
+}
+
+function renderImageSlots() { Object.keys(IMAGE_SLOTS).forEach(renderImageSlot); }
+
+for (const [key, slot] of Object.entries(IMAGE_SLOTS)) {
+  $(slot.input).addEventListener('change', ev => {
+    const file = ev.target.files[0];
+    ev.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    if (imageState[key].newUrl) URL.revokeObjectURL(imageState[key].newUrl);
+    imageState[key] = { newFile: file, newUrl: URL.createObjectURL(file), remove: false };
+    renderImageSlot(key);
+  });
+  $(slot.remove).addEventListener('click', () => {
+    if (imageState[key].newUrl) URL.revokeObjectURL(imageState[key].newUrl);
+    imageState[key] = { newFile: null, newUrl: '', remove: true };
+    renderImageSlot(key);
+  });
+}
 
 async function loadConfig() {
   try {
@@ -581,23 +648,9 @@ function fillConfigForm() {
   (f.bagian || []).forEach(b => addRow('cSections', 'tplSection', { '.r-judul': b.judul, '.r-isi': b.isi }));
   $('cLinks').replaceChildren();
   (f.tautan || []).forEach(l => addRow('cLinks', 'tplLink', { '.r-label': l.label, '.r-url': l.url }));
-  if (profileState.newUrl) URL.revokeObjectURL(profileState.newUrl);
-  profileState = { newFile: null, newUrl: '', remove: false };
-  renderAvatar();
-}
-
-function renderAvatar() {
-  const box = $('cfgAvatar');
-  const src = profileState.newUrl || (!profileState.remove && rawUrl(CFG && CFG.fotoProfil));
-  if (src) {
-    const img = document.createElement('img');
-    img.src = src;
-    img.alt = '';
-    box.replaceChildren(img);
-  } else {
-    box.textContent = inisial($('cNama').value);
-  }
-  $('cfgFotoHapus').hidden = !src;
+  $('cPortofolio').value = c.portofolio ?? DEFAULT_PORTOFOLIO;
+  resetImageSlots();
+  renderImageSlots();
 }
 
 function addRow(listId, tplId, values = {}) {
@@ -631,21 +684,8 @@ $('cWarna').addEventListener('input', () => {
   $('cWarnaText').textContent = $('cWarna').value;
   applyTheme($('cWarna').value);
 });
-$('cNama').addEventListener('input', renderAvatar);
-
-$('cfgFoto').addEventListener('change', ev => {
-  const file = ev.target.files[0];
-  ev.target.value = '';
-  if (!file || !file.type.startsWith('image/')) return;
-  if (profileState.newUrl) URL.revokeObjectURL(profileState.newUrl);
-  profileState = { newFile: file, newUrl: URL.createObjectURL(file), remove: false };
-  renderAvatar();
-});
-$('cfgFotoHapus').addEventListener('click', () => {
-  if (profileState.newUrl) URL.revokeObjectURL(profileState.newUrl);
-  profileState = { newFile: null, newUrl: '', remove: true };
-  renderAvatar();
-});
+$('cNama').addEventListener('input', () => renderImageSlot('fotoProfil'));
+$('cInstansi').addEventListener('input', () => renderImageSlot('logoInstansi'));
 $('btnResetConfig').addEventListener('click', fillConfigForm);
 
 function readConfigForm() {
@@ -672,6 +712,7 @@ function readConfigForm() {
     judulSitus: $('cJudul').value.trim(),
     warnaTema: safeColor($('cWarna').value),
     tampilkanLinkAdmin: $('cAdminLink').checked,
+    portofolio: $('cPortofolio').value.trim(),
     footer: {
       teks: $('cFooterTeks').value.trim(),
       judulTautan: $('cJudulTautan').value.trim(),
@@ -679,6 +720,8 @@ function readConfigForm() {
       tautan
     }
   };
+  if (cfg.portofolio && !/^https?:\/\//i.test(cfg.portofolio)) cfg.portofolio = `https://${cfg.portofolio}`;
+  if (cfg.portofolio && !safeUrl(cfg.portofolio)) throw new Error('Alamat portofolio tidak valid.');
   if (!cfg.nama) throw new Error('Nama wajib diisi.');
   if (!cfg.tanggalMulai || !cfg.tanggalSelesai || cfg.tanggalSelesai < cfg.tanggalMulai) {
     throw new Error('Tanggal selesai harus sama atau setelah tanggal mulai.');
@@ -690,19 +733,23 @@ $('formConfig').addEventListener('submit', async ev => {
   ev.preventDefault();
   await withBusy($('btnSaveConfig'), async () => {
     const cfg = readConfigForm();
-    const oldPhoto = safePath(CFG && CFG.fotoProfil);
-    const changes = [];
-    cfg.fotoProfil = oldPhoto;
-    if (profileState.newFile) {
-      msg('configMsg', 'Memproses foto profil…');
-      const sha = await uploadBlob(await imageToBase64(profileState.newFile, { maxSide: 480, square: true, quality: 0.88 }));
-      cfg.fotoProfil = `uploads/profil/foto-${Date.now().toString(36)}.jpg`;
-      changes.push({ path: cfg.fotoProfil, sha });
-      if (oldPhoto) changes.push({ path: oldPhoto, delete: true });
-    } else if (profileState.remove) {
-      cfg.fotoProfil = '';
-      if (oldPhoto) changes.push({ path: oldPhoto, delete: true });
-    }
+    const stamp = Date.now().toString(36);
+    const changes = (await Promise.all(Object.entries(IMAGE_SLOTS).map(async ([key, slot]) => {
+      const old = safePath(CFG && CFG[key]);
+      const st = imageState[key];
+      cfg[key] = old;
+      if (st.newFile) {
+        msg('configMsg', `Memproses ${slot.label}…`);
+        const sha = await uploadBlob(await imageToBase64(st.newFile, slot.opts));
+        cfg[key] = `uploads/${slot.dir}-${stamp}.${slot.ext}`;
+        return old ? [{ path: cfg[key], sha }, { path: old, delete: true }] : [{ path: cfg[key], sha }];
+      }
+      if (st.remove) {
+        cfg[key] = '';
+        return old ? [{ path: old, delete: true }] : [];
+      }
+      return [];
+    }))).flat();
     changes.push({ path: CONFIG_PATH, content: JSON.stringify(cfg, null, 2) + '\n' });
 
     msg('configMsg', 'Menyimpan ke GitHub…');
