@@ -43,6 +43,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NOTIF_FILE: ${{ runner.temp }}/notifikasi-ai.json
         run: node scripts/laporan-harian.mjs
 
       - name: Simpan ke repositori
@@ -54,6 +55,24 @@ jobs:
           git commit -m "Laporan harian AI (otomatis)"
           for i in 1 2 3; do
             git push origin "HEAD:$BRANCH" && exit 0
-            git pull --rebase origin "$BRANCH" || { git rebase --abort; echo "Bentrok dengan perubahan baru; dicoba lagi pada jadwal berikutnya."; exit 0; }
+            git pull --rebase origin "$BRANCH" || { git rebase --abort; rm -f "$RUNNER_TEMP/notifikasi-ai.json"; echo "Bentrok dengan perubahan baru; dicoba lagi pada jadwal berikutnya."; exit 0; }
           done
           exit 1
+
+      - name: Notifikasi laporan AI siap
+        if: success() && hashFiles('data/notifikasi.json') != ''
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          f="$RUNNER_TEMP/notifikasi-ai.json"
+          if [ -f "$f" ]; then node scripts/notifikasi.mjs --berkas "$f" --tanpa-bersih; fi
+
+      - name: Notifikasi laporan AI gagal
+        if: failure() && hashFiles('data/notifikasi.json') != ''
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: >
+          node scripts/notifikasi.mjs --tanpa-bersih --kategori ai
+          --judul "⚠️ Laporan harian AI gagal dibuat"
+          --isi "Robot tidak berhasil menulis laporan. Buka panel admin lalu tekan Tulis ulang dengan AI, atau lihat tab Actions di GitHub."
+          --url "admin.html?aksi=harian"

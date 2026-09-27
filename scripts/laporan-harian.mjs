@@ -66,6 +66,18 @@ for (const date of todo) {
 }
 write('data/harian.json', Object.fromEntries(Object.entries(harian).sort(([a], [b]) => b.localeCompare(a))));
 
+// Pesan notifikasi push (dikirim workflow setelah laporan berhasil disimpan).
+if (process.env.NOTIF_FILE) {
+  const first = harian[todo[0]] || {};
+  fs.writeFileSync(process.env.NOTIF_FILE, JSON.stringify([{
+    kategori: 'ai',
+    judul: `✨ Laporan harian ${todo.length > 1 ? `${todo.length} hari ` : ''}siap disalin`,
+    isi: `${todo.map(label).join(', ')}: ${first.ringkasan || ''}`,
+    url: 'admin.html?aksi=harian',
+    tag: 'ai'
+  }]));
+}
+
 try {
   const built = ai.buildSummaryPrompt({ config, entries, harian });
   if (built) {

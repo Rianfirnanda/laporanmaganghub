@@ -658,3 +658,15 @@ a.lokasi:hover { color: var(--accent-ink); text-decoration: underline; }
 .start-list { margin: 0 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink-2); }
 .setup-guide { margin: 0 0 16px; padding-top: 0; border-top: 0; }
 .setup-guide .steps-setup { margin-top: 10px; }
+
+/* ---------- Notifikasi push ---------- */
+.sub-head { margin: 4px 0 8px; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+.muted.small { font-size: 13px; margin: 0 0 10px; }
+.secret-once { padding: 14px; border-radius: 14px; box-shadow: var(--inset-sm), inset 0 0 0 2px color-mix(in srgb, #f59e0b 45%, transparent); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.secret-once p { margin: 0; }
+.check-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.device-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.device-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; box-shadow: var(--inset-sm); font-size: 13.5px; }
+.device-row small { display: block; color: var(--muted); }
+.device-row b.this { color: var(--green); font-weight: 700; }
+#notifCard [hidden] { display: none !important; }

@@ -40,10 +40,11 @@ Kartu yang sama bisa dibuka lagi kapan saja dari tab **Keamanan → Mulai dari a
 | Laporan AI otomatis walau panel tidak dibuka | Repo → **Settings → Secrets and variables → Actions** → *New repository secret*: `GEMINI_API_KEY` dan/atau `GROQ_API_KEY` |
 | Salinan foto ke Google Drive tanpa login | Panel → **Keamanan** → *Google Drive tanpa login (Apps Script)*, ikuti langkah di kartunya |
 | Pintasan di HP | Buka panel di Chrome → menu ⋮ → **Tambahkan ke layar utama** |
+| Notifikasi push (laporan AI selesai/gagal, perubahan data, website diperbarui) | Panel → **Keamanan** → *Notifikasi push*: buat kunci, simpan kunci rahasianya sebagai secret `VAPID_PRIVATE_KEY`, lalu **Aktifkan di perangkat ini**. Di iPhone, tambahkan situs ke layar utama dulu (iOS 16.4+). |
 
 ## Keamanan
 
-- Token GitHub, kunci AI, dan kunci Apps Script **tidak pernah masuk ke repository**. Semuanya disimpan terenkripsi (AES-256, dengan kata sandi panel) di perangkat masing-masing.
+- Token GitHub, kunci AI, kunci Apps Script, dan kunci rahasia notifikasi **tidak pernah masuk ke repository**. Semuanya disimpan terenkripsi (AES-256, dengan kata sandi panel) di perangkat masing-masing, atau sebagai secret GitHub Actions. Alamat langganan notifikasi disimpan terenkripsi dan hanya bisa dibuka oleh GitHub Actions.
 - Setiap orang memakai token, akun Google, dan kunci AI **miliknya sendiri**. Jangan bagikan token atau kata sandi panel.
 - Repository publik: isi folder `data/` dan `uploads/` (kegiatan dan foto) bisa dilihat siapa saja. Jangan unggah dokumen rahasia kantor.
 - Repo hasil *Use this template* atau *Fork* masih menyimpan riwayat commit (termasuk foto) pemilik lama sampai Anda menghapus repo itu. Fitur *Mulai baru* hanya mengosongkan isi terbaru yang tampil di website.
