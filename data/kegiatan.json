@@ -23,7 +23,12 @@
       "uploads/2026/09/23/20260923-mujht5j1-mujht5j10.jpg",
       "uploads/2026/09/23/20260923-mujht5j1-mujht5j11.jpg",
       "uploads/2026/09/23/20260923-mujht5j1-mujht5j12.jpg"
-    ]
+    ],
+    "koordinat": {
+      "lat": -3.776041,
+      "lng": 102.319259,
+      "akurasi": 51
+    }
   },
   {
     "id": "20260922-mujho9y7",
