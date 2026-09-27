@@ -36,7 +36,7 @@ async function init() {
 
   const weeks = [...new Set(allDates().filter(isHariKerja).map(d => mingguKe(CONFIG, d)))].sort((a, b) => b - a);
   const asked = Number(params.get('minggu'));
-  WEEK = weeks.includes(asked) ? asked : (weeks[0] || mingguKe(CONFIG, todayStr()));
+  WEEK = weeks.includes(asked) ? asked : (weeks[0] || mingguKe(CONFIG, wibParts().tanggal));
   $('week').innerHTML = (weeks.length ? weeks : [WEEK]).map(w => {
     const { start, end } = rentangMinggu(CONFIG, w);
     return `<option value="${w}">Minggu ke-${w} (${formatPendek(start)} – ${formatPendek(end)})</option>`;
