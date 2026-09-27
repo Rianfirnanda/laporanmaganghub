@@ -723,6 +723,7 @@ for (const [key, slot] of Object.entries(IMAGE_SLOTS)) {
 async function loadConfig() {
   try {
     CFG = await readRepoJSON(CONFIG_PATH, S.branch, {});
+    adoptSharedDrive();
     fillConfigForm();
     renderHero(true);
   } catch (e) {
@@ -1377,12 +1378,23 @@ $('aiModel').addEventListener('change', () => {
   toast(`Model AI diganti ke ${$('aiModel').value}.`);
 });
 
+// Bersihkan hasil tempel di HP: spasi, baris baru, karakter tak terlihat, tanda kutip,
+// atau teks seperti "GEMINI_API_KEY=AIza…". Keabsahan kunci tetap diuji langsung ke Google.
+function cleanApiKey(raw) {
+  const s = String(raw || '').replace(/[\s\u00A0\u180E\u200B-\u200F\u2028-\u202F\u205F-\u206F\u3000\uFEFF]/g, '');
+  const m = s.match(/AIza[\w-]{20,}/) || s.match(/[\w.-]{20,}/g)?.sort((a, b) => b.length - a.length);
+  return m ? m[0] : s.replace(/^['"`]+|['"`]+$/g, '');
+}
+
 $('formAi').addEventListener('submit', async ev => {
   ev.preventDefault();
-  const key = $('aiKey').value.trim();
+  const key = cleanApiKey($('aiKey').value);
   if (!key) return toast('Tempel kunci API Gemini dari Google AI Studio terlebih dahulu.', true);
-  // Format kunci bisa berubah (umumnya diawali "AIza"); keabsahannya diuji langsung ke Google.
-  if (!/^[\w.-]{20,}$/.test(key)) return toast('Kunci API tidak valid. Salin ulang kunci dari Google AI Studio tanpa spasi.', true);
+  if ($('aiPass').value && [key, $('aiKey').value.trim()].includes($('aiPass').value)) {
+    $('aiKey').value = '';
+    return toast('Kolom kunci terisi kata sandi panel (isi otomatis browser). Tempel kunci API Gemini dari Google AI Studio.', true);
+  }
+  if (key.length < 20) return toast(`Kunci terlalu pendek (${key.length} karakter). Salin ulang seluruh kunci dari Google AI Studio.`, true);
   const stored = readStore();
   if (!stored) return;
   await withBusy(ev.submitter, async () => {
@@ -1395,7 +1407,8 @@ $('formAi').addEventListener('submit', async ev => {
       models = await loadAiModels();                      // sekaligus menguji kunci
     } catch (e) {
       AI_KEY = prev;
-      throw e;
+      saveSession();
+      throw new Error(`${e.message} (kunci terbaca ${key.length} karakter, diawali "${key.slice(0, 4)}…")`);
     }
     writeStore({ ...stored, aiEnc: await encryptToken(key, $('aiPass').value), aiModel: pickModel(models) });
     renderAi();
@@ -1531,18 +1544,44 @@ function renderDrive() {
   }
 }
 
-$('formDrive').addEventListener('submit', ev => {
+// Client ID bukan rahasia, jadi disimpan di config.json agar HP dan laptop
+// otomatis memakai pengaturan yang sama. Status aktif & login tetap per perangkat.
+function adoptSharedDrive() {
+  const shared = CFG && CFG.drive && CFG.drive.clientId;
+  if (!shared || shared === driveCfg.clientId) return;
+  const first = !driveCfg.clientId;
+  driveToken = null;
+  driveCfg = { clientId: shared, enabled: first ? CFG.drive.aktif !== false : Boolean(driveCfg.enabled) };
+  try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
+  renderDrive();
+  if (driveReady()) loadGis().catch(() => {});
+}
+
+$('formDrive').addEventListener('submit', async ev => {
   ev.preventDefault();
-  const clientId = $('dClientId').value.trim();
+  const clientId = $('dClientId').value.replace(/\s+/g, '');
   if (clientId && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
     return toast('Client ID tidak valid. Harus berakhiran .apps.googleusercontent.com', true);
   }
-  if (clientId !== driveCfg.clientId) { driveToken = null; delete driveCfg.folderId; }
-  driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && Boolean(clientId) };
-  try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
-  renderDrive();
-  if (driveCfg.clientId) loadGis().catch(e => toast(e.message, true));
-  toast(driveReady() ? 'Google Drive aktif. Klik "Hubungkan & tes" untuk login.' : 'Pengaturan Google Drive disimpan.');
+  await withBusy(ev.submitter, async () => {
+    if (clientId !== driveCfg.clientId) { driveToken = null; delete driveCfg.folderId; }
+    driveCfg = { ...driveCfg, clientId, enabled: $('dEnabled').checked && Boolean(clientId) };
+    try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); } catch { /* abaikan */ }
+    renderDrive();
+    if (driveCfg.clientId) loadGis().catch(e => toast(e.message, true));
+    const sharedId = (CFG && CFG.drive && CFG.drive.clientId) || '';
+    if (CFG && clientId !== sharedId) {
+      let latest;
+      await commit('Perbarui pengaturan Google Drive', async base => {
+        latest = await readRepoJSON(CONFIG_PATH, base, {});
+        if (clientId) latest.drive = { clientId }; else delete latest.drive;
+        return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
+      });
+      CFG = { ...CFG, drive: latest.drive };
+      if (!clientId) delete CFG.drive;
+    }
+    toast(driveReady() ? 'Google Drive aktif di semua perangkat. Klik "Hubungkan & tes" untuk login di perangkat ini.' : 'Pengaturan Google Drive disimpan.');
+  });
 });
 
 $('btnDriveTest').addEventListener('click', async ev => {
