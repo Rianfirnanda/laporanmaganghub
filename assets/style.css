@@ -675,3 +675,24 @@ a.lokasi:hover { color: var(--accent-ink); text-decoration: underline; }
 .device-row small { display: block; color: var(--muted); }
 .device-row b.this { color: var(--green); font-weight: 700; }
 #notifCard [hidden] { display: none !important; }
+
+/* ---------- Indikator jaringan (panel admin) ---------- */
+.net-status { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 11px; border: 0; border-radius: 999px; background: var(--bg); box-shadow: var(--raised-sm); color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; }
+.net-bars { width: 18px; height: 14px; flex: none; }
+.net-bars rect { fill: currentColor; opacity: .22; transition: opacity .3s, fill .3s; }
+.net-status[data-bars="1"] rect:nth-child(-n+1),
+.net-status[data-bars="2"] rect:nth-child(-n+2),
+.net-status[data-bars="3"] rect:nth-child(-n+3),
+.net-status[data-bars="4"] rect:nth-child(-n+4) { opacity: 1; }
+.net-good { color: var(--green); }
+.net-fair { color: #d97706; }
+.net-poor, .net-off { color: var(--red); }
+.net-ms { min-width: 3.2em; text-align: left; }
+@media (max-width: 420px) {
+  .net-status { padding: 0 9px; }
+  .net-ms { min-width: 0; }
+}
+/* HP: navbar panel memuat indikator jaringan, jadi teks brand disembunyikan (ikon tetap). */
+@media (max-width: 480px) {
+  body.admin .brand-text, body.admin .brand-tag { display: none; }
+}
