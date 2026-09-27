@@ -73,7 +73,7 @@ function buildHarianPrompt({ config = {}, entries = [], harian = {}, date, statu
   });
   const prev = Object.keys(harian).filter(d => d < date && harian[d] && harian[d].ringkasan).sort().pop();
   return [
-    `Peserta: ${config.posisi || 'peserta magang'} di ${config.instansi || 'instansi'}.`,
+    `Peserta: ${config.posisi || 'peserta magang'}${config.divisi ? ` (${config.divisi})` : ''} di ${config.instansi || 'instansi'}.`,
     `Tanggal: ${tanggalLabel || date}. Status kehadiran: ${status}${ket ? ` (${ket})` : ''}.`,
     '',
     lines.length ? `Catatan kegiatan hari ini, urut jam:\n${lines.join('\n')}` : 'Tidak ada catatan kegiatan pada hari ini.',
@@ -117,7 +117,7 @@ function buildSummaryPrompt({ config = {}, entries = [], harian = {} }) {
   return {
     minggu: lastWeek,
     prompt: [
-      `Peserta: ${config.nama || 'peserta'} (${config.posisi || 'peserta magang'}) di ${config.instansi || 'instansi'}. Minggu terbaru: ${lastWeek}.`,
+      `Peserta: ${config.nama || 'peserta'} (${[config.posisi || 'peserta magang', config.divisi].filter(Boolean).join(', ')}) di ${config.instansi || 'instansi'}. Minggu terbaru: ${lastWeek}.`,
       'Data kegiatan per hari:',
       ...lines.slice(-60)
     ].join('\n')

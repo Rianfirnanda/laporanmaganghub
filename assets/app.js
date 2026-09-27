@@ -26,6 +26,8 @@ async function init() {
   if (!HARIAN || typeof HARIAN !== 'object' || Array.isArray(HARIAN)) HARIAN = {};
   for (const d of Object.keys(HARIAN)) if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !HARIAN[d]) delete HARIAN[d];
   aturHariLibur(CONFIG.hariLibur);
+  aturZona(CONFIG.zonaWaktu);
+  renderCopyNote();
   renderProfile();
   renderSidebar();
   renderKpis();
@@ -66,7 +68,7 @@ function renderProfile() {
   $('nama').textContent = CONFIG.nama;
   $('posisi').textContent = CONFIG.posisi || '';
   $('posisi').hidden = !CONFIG.posisi;
-  $('instansi').textContent = CONFIG.instansi || '';
+  $('instansi').textContent = [CONFIG.divisi, CONFIG.instansi].filter(Boolean).join(' · ');
 
   // Progres program sama dengan dasbor MagangHub (hari kalender), ditambah
   // hitungan hari kerja (Senin–Jumat) yang dipakai untuk rekap dan laporan.
@@ -117,7 +119,7 @@ function renderSidebar() {
     $('orgLogo').textContent = inisialInstansi(CONFIG.instansi);
   }
   $('orgName').textContent = CONFIG.instansi || '';
-  $('orgRole').textContent = CONFIG.posisi || '';
+  $('orgRole').textContent = [CONFIG.posisi, CONFIG.divisi].filter(Boolean).join(' · ');
   $('orgProgram').textContent = CONFIG.program || '';
   $('orgProgram').hidden = !CONFIG.program;
   const m = CONFIG.mentor || {};
@@ -184,7 +186,14 @@ function inisialInstansi(nama) {
   return inisial(words.join(' ') || nama);
 }
 
-const DEFAULT_PORTOFOLIO = 'https://rianfirnanda.vercel.app';
+// Situs hasil "Use this template"/fork masih berisi data pemilik lama sampai
+// pemilik baru menekan "Mulai baru" di panel admin. Beri tahu pengunjung.
+function renderCopyNote() {
+  const host = location.hostname.toLowerCase();
+  const pemilik = String(CONFIG.repo || '').split('/')[0].toLowerCase();
+  const salinan = host.endsWith('.github.io') && pemilik && host.split('.')[0] !== pemilik;
+  $('copyNote').hidden = !salinan;
+}
 
 function setBrandImage(el, src) {
   const img = document.createElement('img');
@@ -197,10 +206,10 @@ function setBrandImage(el, src) {
 function renderFooter() {
   const f = CONFIG.footer || {};
   const periode = `${formatTanggal(CONFIG.tanggalMulai, false)} – ${formatTanggal(CONFIG.tanggalSelesai, false)}`;
-  const porto = safeUrl(CONFIG.portofolio ?? DEFAULT_PORTOFOLIO);
+  const porto = safeUrl(CONFIG.portofolio || '');
   let html = `<div class="footer-col footer-about">
     <a class="brand" href="./"><span class="brand-mark">${icon('file')}</span><span class="brand-text">Laporan<b>magang</b></span></a>
-    <p class="footer-lead">Dokumentasi kegiatan harian <b>${esc(CONFIG.nama)}</b>, ${esc(CONFIG.posisi)} di ${esc(CONFIG.instansi)}.</p>
+    <p class="footer-lead">Dokumentasi kegiatan harian <b>${esc(CONFIG.nama)}</b>${CONFIG.posisi ? `, ${esc(CONFIG.posisi)}` : ''}${CONFIG.divisi ? ` (${esc(CONFIG.divisi)})` : ''}${CONFIG.instansi ? ` di ${esc(CONFIG.instansi)}` : ''}.</p>
     <p class="footer-period">${icon('calendar')} ${periode}</p>
     ${porto ? `<a class="btn btn-sm footer-porto" href="${esc(porto)}" target="_blank" rel="noopener">${icon('user')} Portofolio saya</a>` : ''}
   </div>
@@ -231,11 +240,11 @@ function renderFooter() {
     $('portoLink').href = porto;
     $('portoLink').textContent = `Dibuat oleh ${CONFIG.nama} · ${porto.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗`;
   }
-  $('footerText').textContent = f.teks || `© ${new Date().getFullYear()} ${CONFIG.nama} · ${CONFIG.instansi}`;
+  $('footerText').textContent = f.teks || [`© ${new Date().getFullYear()} ${CONFIG.nama}`, CONFIG.instansi].filter(Boolean).join(' · ');
   $('adminLink').hidden = !CONFIG.tampilkanLinkAdmin;
 }
 
-// Jam server (WIB) di footer, berdetak setiap detik.
+// Jam server di footer, berdetak setiap detik.
 function startFooterClock() {
   const tick = () => {
     $('footerTime').textContent = formatWaktuWib(serverNow(), false);
@@ -507,7 +516,7 @@ function metaHtml(e, photos) {
   if (t && !Number.isNaN(t.getTime())) {
     const w = wibParts(t);
     const hari = w.tanggal === e.tanggal ? '' : `${formatTanggal(w.tanggal, false)}, `;
-    parts.push(`<span title="Waktu diambil dari server, bukan dari jam HP">${icon('clock')} Dicatat ${hari}${w.jam.replace(':', '.')}.${w.detik} WIB · waktu server${e.koordinat ? ' · lokasi GPS' : ''}</span>`);
+    parts.push(`<span title="Waktu diambil dari server, bukan dari jam HP">${icon('clock')} Dicatat ${hari}${w.jam.replace(':', '.')}.${w.detik} ${ZONA_LABEL} · waktu server${e.koordinat ? ' · lokasi GPS' : ''}</span>`);
   }
   if (photos.length) {
     const n = photos.filter(src => inDrive(e, src)).length;

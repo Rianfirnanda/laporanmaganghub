@@ -20,6 +20,13 @@ const read = (path, fallback) => {
 const write = (path, data) => fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
 
 const config = read('data/config.json', {});
+// Repo salinan (template/fork) yang belum dikosongkan lewat "Mulai baru" masih
+// berisi data pemilik lama: jangan habiskan kuota AI untuk itu.
+const repo = String(process.env.GITHUB_REPOSITORY || '').toLowerCase();
+if (repo && config.repo && String(config.repo).toLowerCase() !== repo) {
+  console.log(`Lewati: data milik ${config.repo}. Buka panel admin → "Mulai baru" dulu.`);
+  process.exit(0);
+}
 const entries = (read('data/kegiatan.json', []) || []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
 let harian = read('data/harian.json', {});
 if (!harian || typeof harian !== 'object' || Array.isArray(harian)) harian = {};
@@ -30,7 +37,8 @@ const label = d => {
   const [y, m, day] = d.split('-').map(Number);
   return `${HARI[new Date(Date.UTC(y, m - 1, day)).getUTCDay()]}, ${day} ${BULAN[m - 1]} ${y}`;
 };
-const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+const ZONA = ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'].includes(config.zonaWaktu) ? config.zonaWaktu : 'Asia/Jakarta';
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA }).format(new Date());
 
 const recent = [...new Set(entries.map(e => e.tanggal))].filter(d => d <= today).sort().slice(-7);
 const todo = recent.filter(d => ai.perluLaporanAi(entries, harian, d, config.hariLibur)).sort().reverse().slice(0, 5);

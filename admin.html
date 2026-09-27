@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://generativelanguage.googleapis.com https://api.groq.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=25"></script>
+  <script src="assets/theme.js?v=26"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=25">
+  <link rel="stylesheet" href="assets/style.css?v=26">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -85,6 +85,15 @@
       </div>
       <div class="card-body">
         <p class="note" id="setupNote">Masukkan token GitHub lalu buat kata sandi panel. Token akan dienkripsi dengan kata sandi ini sebelum disimpan di perangkat.</p>
+        <details class="help setup-guide">
+          <summary>Baru menyalin repo ini untuk laporan Anda sendiri?</summary>
+          <ol class="steps-setup">
+            <li>Pastikan repo sudah milik akun GitHub Anda (<b>Use this template</b> atau <b>Fork</b>) dan <b>Settings → Pages</b> sudah memakai <i>Deploy from a branch → main → / (root)</i>.</li>
+            <li>Buat token di <a id="tokenLink" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub → Fine-grained tokens</a>: <i>Repository access → Only select repositories</i> → pilih repo Anda; <i>Permissions → Contents: Read and write</i>. Salin tokennya (<code>github_pat_…</code>).</li>
+            <li>Isi username, nama repo, dan token di bawah, lalu buat kata sandi panel (khusus perangkat ini).</li>
+            <li>Setelah terhubung, panel menawarkan <b>Mulai baru</b>: data pemilik lama dikosongkan dan profil Anda diisi.</li>
+          </ol>
+        </details>
         <form id="formSetup" class="form" autocomplete="off">
           <div class="row">
             <label class="field"><span>Username / owner</span><input id="sOwner" required pattern="[A-Za-z0-9._\-]+"></label>
@@ -123,6 +132,44 @@
 
     <!-- ===== Aplikasi (hanya tampil setelah terbuka) ===== -->
     <div id="app" hidden>
+      <!-- ---------- Mulai baru (repo salinan / mengosongkan data) ---------- -->
+      <section class="card start-card" id="startCard" hidden>
+        <div class="card-header">
+          <span class="head-icon amber"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+          <div class="head-text"><h3 id="startTitle">Mulai baru</h3><span>Kosongkan data lama lalu isi profil Anda</span></div>
+          <button class="btn btn-light btn-sm" type="button" id="btnStartClose">Nanti</button>
+        </div>
+        <form id="formStart" class="form card-body" autocomplete="off">
+          <p class="note" id="startNote"></p>
+          <ul class="start-list" id="startList"><li>Menghitung isi repository…</li></ul>
+          <div class="row row-2">
+            <label class="field"><span>Nama lengkap</span><input id="mbNama" required maxlength="80"></label>
+            <label class="field"><span>Posisi</span><input id="mbPosisi" maxlength="80" placeholder="Asisten Pranata Komputer"></label>
+          </div>
+          <div class="row row-2">
+            <label class="field"><span>Divisi / unit kerja (opsional)</span><input id="mbDivisi" maxlength="100"></label>
+            <label class="field"><span>Instansi</span><input id="mbInstansi" maxlength="100"></label>
+          </div>
+          <label class="field"><span>Keterangan program</span><input id="mbProgram" maxlength="160"></label>
+          <div class="row">
+            <label class="field"><span>Tanggal mulai magang</span><input type="date" id="mbMulai" required></label>
+            <label class="field"><span>Tanggal selesai magang</span><input type="date" id="mbSelesai" required></label>
+            <label class="field"><span>Zona waktu</span>
+              <select id="mbZona">
+                <option value="Asia/Jakarta">WIB</option>
+                <option value="Asia/Makassar">WITA</option>
+                <option value="Asia/Jayapura">WIT</option>
+              </select>
+            </label>
+          </div>
+          <label class="check-row"><input type="checkbox" id="mbSetuju" required> Saya paham data di atas dihapus dari repository ini dan tidak bisa dibatalkan dari panel.</label>
+          <div class="actions">
+            <button class="btn btn-danger" type="submit" id="btnStart">Kosongkan &amp; mulai baru</button>
+            <span class="progress-msg" id="startMsg"></span>
+          </div>
+        </form>
+      </section>
+
       <!-- ---------- Tab Kegiatan ---------- -->
       <div class="panel admin-layout" data-panel="kegiatan">
         <section class="card" id="cardForm">
@@ -220,7 +267,7 @@
           </div>
           <form id="formHarian" class="form card-body">
             <div class="quick-bar">
-              <div class="server-clock" title="Waktu server (WIB) dan lokasi GPS saat ini">
+              <div class="server-clock" title="Waktu server dan lokasi GPS saat ini">
                 <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
                 <div><strong class="sc-time">--.--.--</strong><small id="hLok">Mencari lokasi GPS…</small></div>
               </div>
@@ -350,10 +397,21 @@
                     </div>
                   </div>
                   <div class="row row-2">
-                    <label class="field"><span>Posisi</span><input id="cPosisi" maxlength="80"></label>
-                    <label class="field"><span>Instansi</span><input id="cInstansi" maxlength="100"></label>
+                    <label class="field"><span>Posisi</span><input id="cPosisi" maxlength="80" placeholder="Asisten Pranata Komputer"></label>
+                    <label class="field"><span>Divisi / unit kerja (opsional)</span><input id="cDivisi" maxlength="100" placeholder="Tim IPDS"></label>
                   </div>
-                  <label class="field"><span>Keterangan program</span><input id="cProgram" maxlength="160"></label>
+                  <label class="field"><span>Instansi</span><input id="cInstansi" maxlength="100" placeholder="BPS Kabupaten …"></label>
+                  <label class="field"><span>Keterangan program</span><input id="cProgram" maxlength="160" placeholder="Program Magang Nasional MagangHub Kemnaker · Batch …"></label>
+                  <div class="row row-2">
+                    <label class="field"><span>Kota tanda tangan laporan (kosongkan untuk otomatis dari instansi)</span><input id="cKotaTtd" maxlength="60"></label>
+                    <label class="field"><span>Zona waktu</span>
+                      <select id="cZona">
+                        <option value="Asia/Jakarta">WIB (Sumatra, Jawa, Kalimantan Barat/Tengah)</option>
+                        <option value="Asia/Makassar">WITA (Bali, Nusa Tenggara, Kalimantan lain, Sulawesi)</option>
+                        <option value="Asia/Jayapura">WIT (Maluku, Papua)</option>
+                      </select>
+                    </label>
+                  </div>
                   <div class="row row-2">
                     <label class="field"><span>Tanggal mulai magang</span><input type="date" id="cMulai" required></label>
                     <label class="field"><span>Tanggal selesai magang</span><input type="date" id="cSelesai" required></label>
@@ -424,7 +482,7 @@
                 <div class="head-text"><h3>Footer</h3><span>Bagian bawah website</span></div>
               </div>
               <div class="card-body form">
-                <label class="field"><span>Tautan portofolio (tampil di footer, kosongkan untuk menyembunyikan)</span><input id="cPortofolio" maxlength="200" placeholder="https://rianfirnanda.vercel.app"></label>
+                <label class="field"><span>Tautan portofolio (tampil di footer, kosongkan untuk menyembunyikan)</span><input id="cPortofolio" maxlength="200" placeholder="https://nama-anda.vercel.app"></label>
                 <label class="field"><span>Teks baris bawah (kosongkan untuk "© tahun nama · instansi")</span><input id="cFooterTeks" maxlength="200"></label>
                 <div class="field">
                   <span>Bagian footer (misalnya Tentang, Kontak, Jam Kerja)</span>
@@ -596,6 +654,17 @@
 
             <section class="card">
               <div class="card-header">
+                <span class="head-icon amber"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+                <div class="head-text"><h3>Mulai dari awal</h3><span>Untuk repo salinan atau magang baru</span></div>
+              </div>
+              <div class="card-body">
+                <p class="note">Menghapus semua kegiatan, foto, laporan harian, ringkasan AI, dan profil dari repository ini dalam satu commit, lalu mengisi profil baru. Daftar hari libur tetap disimpan. Token, kunci AI, dan Apps Script di perangkat ini tidak terhapus.</p>
+                <button class="btn btn-outline" type="button" id="btnStartOpen">Buka wizard "Mulai baru"</button>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-header">
                 <span class="head-icon red"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></span>
                 <div class="head-text"><h3>Perangkat ini</h3></div>
               </div>
@@ -659,8 +728,8 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=25"></script>
-  <script src="assets/ai.js?v=25"></script>
-  <script src="assets/admin.js?v=25"></script>
+  <script src="assets/common.js?v=26"></script>
+  <script src="assets/ai.js?v=26"></script>
+  <script src="assets/admin.js?v=26"></script>
 </body>
 </html>
