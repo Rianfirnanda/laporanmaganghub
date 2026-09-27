@@ -11,45 +11,52 @@
   },
   "2026-09-25": {
     "status": "Hadir",
-    "ringkasan": "Saya mengikuti rangkaian lomba Hari Statistik Nasional 2026 di kantor BPS Kabupaten Bengkulu Tengah bersama mitra statistik. Setelah itu, saya menyiapkan perlengkapan untuk apel peringatan HSN 2026. Pada sore hari, saya membersihkan lapangan yang akan dipakai sebagai lokasi apel.",
-    "pembelajaran": "Dari kegiatan tersebut, saya belajar mengatur logistik acara secara cepat dan memastikan kebersihan area publik sebelum acara berlangsung.",
+    "ringkasan": "Pagi saya ikut rangkaian lomba Hari Statistik Nasional 2026 di kantor BPS Kabupaten Bengkulu Tengah bersama mitra statistik, lalu menyiapkan perlengkapan untuk apel peringatan. Sore saya membersihkan lapangan yang akan dipakai sebagai lokasi apel.",
+    "pembelajaran": "Saya belajar mengatur logistik acara serta menyiapkan area publik untuk kegiatan resmi.",
     "kendala": "-",
     "auto": true,
     "sumber": "1b9k4ur",
     "model": "Groq · openai/gpt-oss-120b",
-    "diperbarui": "2026-09-27T11:02:07.899Z"
+    "diperbarui": "2026-09-27T11:33:03.811Z"
   },
   "2026-09-24": {
     "status": "Hadir",
-    "ringkasan": "Pagi ini saya mengikuti agenda sosialisasi via Zoom mengenai Satu Portal Akses Terintegrasi (SSO), VPN, dan email baru yang diadakan oleh Ditjen SIS. Memasuki siang hari, saya menyelesaikan penanganan anomali data untuk Kecamatan Merigi Sakti pada website lintas benteng serta membantu pemasangan spanduk peringatan Hari Statistik Nasional di kantor. Menjelang sore, kegiatan dilanjutkan bersama rekan tim untuk mempersiapkan perlombaan dalam rangka memeriahkan Hari Statistik Nasional.",
-    "pembelajaran": "Melalui kegiatan hari ini, saya memahami pembaruan mekanisme autentikasi akun terintegrasi BPS dan cara konfigurasi jaringan pendukungnya, serta semakin cermat dalam menelusuri galat atau anomali data di website lintas benteng.",
-    "kendala": "Seluruh rangkaian sosialisasi, penanganan data, hingga persiapan lomba berjalan lancar tanpa ada hambatan yang berarti.",
-    "diperbarui": "2026-09-27T09:44:22.616Z",
+    "ringkasan": "Saya mengikuti sosialisasi melalui Zoom tentang SSO, VPN, dan email baru yang diadakan oleh Direktorat Jenderal SIS, kemudian menangani anomali data untuk Kecamatan Merigi Sakti pada website lintas‑benteng serta memasang banner Hari Statistik Nasional, dan di sore hari bersama tim menyiapkan persiapan lomba dalam rangka HSN.",
+    "pembelajaran": "Dari kegiatan tersebut saya memahami cara konfigurasi SSO dan VPN serta proses verifikasi data pada website lintas‑benteng, dan belajar mengelola tampilan banner secara efektif.",
+    "kendala": "Tidak ada kendala berarti.",
+    "diperbarui": "2026-09-27T11:33:09.035Z",
     "auto": true,
     "sumber": "u2f62t",
-    "model": "Gemini · gemini-3.8-flash"
+    "model": "Groq · openai/gpt-oss-120b"
   },
   "2026-09-23": {
     "status": "Hadir",
-    "ringkasan": "Pekerjaan hari ini berfokus pada penyempurnaan website lintas-benteng di BPS Kabupaten Bengkulu Tengah, khususnya pada modul activities-dashboard.html dan analisis-sentimen.html. Saya memindahkan proses kalkulasi model sentimen dari Flask langsung ke sisi peramban dengan berkas JSON, menyatukan seluruh data dan log ke Firestore, serta memperbaiki galat pada login, pembacaan tagar, dan diagram donat. Di samping itu, saya melatih ulang model klasifikasi memakai dataset SmSA dengan capaian akurasi 81,4 persen, menyempurnakan logika crawler, dan membuat fitur koreksi manual untuk sentimen serta tanggal artikel.",
-    "pembelajaran": "Saya memahami penerapan inferensi model machine learning di sisi klien guna menyiasati lingkungan hosting statis serta pentingnya sentralisasi penyimpanan data agar tetap konsisten saat halaman dimuat ulang. Keterampilan saya juga terasah dalam menelusuri pemanggilan endpoint yang bermasalah pada JavaScript serta menyusun kamus kata negasi untuk mencegah bias klasifikasi.",
-    "kendala": "Firebase Hosting tidak mendukung backend Flask untuk pemrosesan model dinamis, namun kendala tersebut berhasil diatasi dengan memindahkan eksekusi inferensi ke sisi peramban memanfaatkan bobot model berformat JSON.",
-    "diperbarui": "2026-09-27T08:52:31.049Z",
-    "auto": true
+    "ringkasan": "Saya melanjutkan pengembangan website lintas‑benteng untuk BPS Kabupaten Bengkulu Tengah, fokus pada perbaikan fitur manajemen kegiatan di activities-dashboard.html dan halaman analisis‑sentimen.html. Pada halaman analisis sentimen, proses inferensi dipindahkan dari Flask ke browser dengan menggunakan bobot model dalam format JSON, serta semua data artikel, tagar, dan log dipindahkan ke Firestore. Selain itu, saya memperbaiki beberapa bug seperti login yang tidak aktif, tab log kosong, tagar yang tidak terbaca, tanggal terbit yang tidak tersimpan, serta diagram donat yang belum menampilkan kategori Netral, dan menambahkan fitur koreksi manual untuk tanggal dan sentimen per artikel.",
+    "pembelajaran": "Saya belajar cara mengonversi model machine learning agar dapat dijalankan di sisi klien menggunakan JSON, serta pentingnya konsistensi penyimpanan data di satu tempat untuk menghindari kehilangan informasi. Proses debugging JavaScript untuk endpoint yang tidak tersedia dan penyesuaian kosakata model demi mengurangi bias juga menjadi bagian dari pembelajaran.",
+    "kendala": "-",
+    "diperbarui": "2026-09-27T11:33:11.294Z",
+    "auto": true,
+    "sumber": "l5uukx",
+    "model": "Groq · openai/gpt-oss-120b"
   },
   "2026-09-22": {
     "status": "Hadir",
-    "ringkasan": "Saya melanjutkan pengembangan website monitoring magang pada domain lintas-benteng.web.app, khususnya berfokus di halaman activities-dashboard. Di sana, saya menambahkan fitur grafik visualisasi data, mengelola input data baru ke Firestore, serta merapikan tampilan antarmuka sistem. Saya juga menyempurnakan fungsi manajemen kegiatan agar sistem ini berjalan lebih optimal saat digunakan nanti.",
-    "pembelajaran": "Melalui pengerjaan ini, saya memahami cara menyajikan visualisasi data grafik secara real-time dari Firestore ke dalam dashboard website. Selain itu, kemampuan saya dalam menyusun struktur database Firestore dan merancang antarmuka pengguna yang responsif menjadi lebih terasah.",
-    "kendala": "Tantangan hari ini terletak pada penyesuaian grafik agar dapat menyinkronkan data dari Firestore secara tepat waktu. Saya juga membutuhkan waktu lebih untuk memastikan tata letak dashboard tetap konsisten dan rapi di berbagai ukuran layar.",
-    "diperbarui": "2026-09-27T08:50:26.960Z",
-    "auto": true
+    "ringkasan": "Saya melanjutkan pengembangan website monitoring kegiatan magang di lintas-benteng.web.app, fokus pada halaman activities-dashboard. Pada sesi tersebut saya menambahkan fitur dashboard, membuat visualisasi data berupa grafik, mengelola data di Firestore, serta memperbaiki tampilan antarmuka agar lebih rapi. Selain itu, saya juga menyempurnakan fitur manajemen kegiatan pada sistem untuk memudahkan pengguna.",
+    "pembelajaran": "Saya belajar cara mengintegrasikan visualisasi grafik ke dalam dashboard web dengan data real-time dari Firestore, serta memperdalam pemahaman tentang struktur data dan pengelolaan di Firestore. Selain itu, teknik memperbaiki tampilan antarmuka agar responsif di berbagai ukuran layar juga saya praktikkan.",
+    "kendala": "Penyesuaian tampilan visualisasi grafik agar data dapat ditampilkan secara akurat dan real-time memerlukan waktu ekstra, begitu pula memastikan konsistensi tampilan dashboard di berbagai ukuran layar saat memperbaiki fitur manajemen kegiatan.",
+    "diperbarui": "2026-09-27T11:33:13.334Z",
+    "auto": true,
+    "sumber": "1w7t0w4",
+    "model": "Groq · openai/gpt-oss-120b"
   },
   "2026-09-21": {
     "status": "Hadir",
-    "ringkasan": "Pagi ini saya mengikuti sesi perkenalan peserta MagangHub Batch 2 di kantor BPS Kabupaten Bengkulu Tengah sekaligus mendengarkan arahan dari Kepala BPS mengenai tugas bidang pranata komputer ke depan. Selanjutnya, saya mempelajari sistem serta alur kerja website lintas-benteng.web.app untuk memeriksa data anomali, lalu menginstal perangkat lunak pendukung seperti VPN untuk persiapan akses sistem.",
-    "pembelajaran": "Saya mendapatkan pemahaman dasar mengenai mekanisme kerja website lintas-benteng.web.app dalam mengidentifikasi data anomali serta teknis penyiapan jaringan VPN untuk mengakses platform tersebut.",
-    "kendala": "Seluruh rangkaian kegiatan perkenalan, arahan, dan penginstalan perangkat lunak berjalan lancar tanpa mengalami kendala berarti.",
-    "diperbarui": "2026-09-27T07:32:19.025Z"
+    "ringkasan": "Saya mengikuti perkenalan batch 2 MagangHub di BPS Kabupaten Bengkulu Tengah, kemudian mempelajari sistem dan alur kerja website lintas-benteng.web.app serta menginstall perangkat lunak pendukung seperti VPN. Selanjutnya saya menerima arahan dari kepala BPS mengenai tugas bidang pranata komputer yang akan saya kerjakan ke depan.",
+    "pembelajaran": "Saya memahami mekanisme pemeriksaan data anomali melalui website lintas-benteng.web.app dan memperdalam pengetahuan tentang konfigurasi VPN untuk akses aman.",
+    "kendala": "Tidak ada kendala berarti.",
+    "diperbarui": "2026-09-27T11:33:15.078Z",
+    "auto": true,
+    "sumber": "ea0v8g",
+    "model": "Groq · openai/gpt-oss-120b"
   }
 }
