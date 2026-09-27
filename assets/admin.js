@@ -1485,7 +1485,7 @@ function setDeployStatus(state) {
 }
 
 // ================= Laporan harian (isian daftar hadir monev) =================
-// Setiap sore monev MagangHub meminta tiga isian: ringkasan kegiatan,
+// Setiap sore monev MagangHub meminta tiga isian: uraian aktivitas,
 // pembelajaran, dan kendala. Gemini menyusunnya dari catatan kegiatan hari
 // itu; hasilnya bisa diedit, disalin, dan disimpan ke data/harian.json.
 const HARIAN_PATH = 'data/harian.json';
@@ -1644,10 +1644,11 @@ $('formHarian').addEventListener('submit', async ev => {
     diperbarui: new Date().toISOString()
   };
   // Monev MagangHub menolak kolom kosong atau "-".
-  const kosong = [['ringkasan', 'Ringkasan'], ['pembelajaran', 'Pembelajaran'], ['kendala', 'Kendala']]
-    .filter(([k]) => /^[\s\-–—.]*$/.test(rec[k])).map(([, l]) => l);
+  const kolom = [['ringkasan', 'Uraian Aktivitas', 'hRingkasan'], ['pembelajaran', 'Pembelajaran yang Diperoleh', 'hPembelajaran'], ['kendala', 'Kendala yang Dialami', 'hKendala']]
+    .filter(([k]) => /^[\s\-–—.]*$/.test(rec[k]));
+  const kosong = kolom.map(([, l]) => l);
   if (rec.ringkasan && kosong.length && !confirm(`Kolom ${kosong.join(', ')} masih kosong atau hanya "-". Monev MagangHub tidak menerima isian kosong. Tetap simpan?`)) {
-    $(`h${kosong[0]}`).focus();
+    $(kolom[0][2]).focus();
     return;
   }
   // "auto": tulisan AI yang tidak diubah; boleh ditulis ulang otomatis saat kegiatan bertambah.

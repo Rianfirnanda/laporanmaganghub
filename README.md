@@ -5,7 +5,7 @@ Website untuk mencatat kegiatan magang setiap hari, lengkap dengan foto, lokasi,
 ## Apa saja yang bisa dilakukan
 
 - **Catat kegiatan dari HP.** Ambil foto langsung dari kamera. Lokasi GPS dan jam diisi otomatis dari waktu server, jadi tidak bisa diakali dengan mengubah jam HP.
-- **Laporan harian otomatis.** AI menulis ringkasan kegiatan, pembelajaran, dan kendala dari catatan Anda. Tinggal salin ke monev MagangHub.
+- **Laporan harian otomatis.** AI menulis Uraian Aktivitas, Pembelajaran yang Diperoleh, dan Kendala yang Dialami dari catatan Anda, sama seperti kolom di monev. Tinggal salin ke monev MagangHub.
 - **Dasbor publik.** Menampilkan progres magang, kegiatan per hari, galeri foto, dan rekap mingguan.
 - **Laporan mingguan siap cetak.** Versi dokumen A4 dan versi slide, bisa disimpan sebagai PDF.
 - **Hari kerja dihitung dengan benar.** Hanya Senin sampai Jumat, di luar libur nasional dan cuti bersama.

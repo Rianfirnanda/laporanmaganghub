@@ -599,7 +599,7 @@ document.addEventListener('click', ev => {
 // ---------- Laporan harian (modal) ----------
 function openReport(date) {
   const r = HARIAN[date] || {};
-  const parts = [['Ringkasan kegiatan', r.ringkasan], ['Pembelajaran yang didapat', r.pembelajaran], ['Kendala yang dihadapi', r.kendala]];
+  const parts = [['Uraian Aktivitas', r.ringkasan], ['Pembelajaran yang Diperoleh', r.pembelajaran], ['Kendala yang Dialami', r.kendala]];
   $('reportTitle').textContent = `Laporan harian · ${formatTanggal(date)}`;
   $('reportSub').textContent = `Status: ${statusOf(date)}${r.keterangan ? ` (${r.keterangan})` : ''}`;
   $('reportBody').innerHTML = parts.map(([title, text], i) => `<section>

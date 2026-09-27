@@ -166,9 +166,9 @@ function renderDokumen(days, range) {
         </tr>`).join('')}</tbody>
       </table>` : `<p class="muted">Tidak masuk (${d.status.toLowerCase()})${r.keterangan ? `: ${esc(r.keterangan)}` : ''}.</p>`}
       ${r.ringkasan || r.pembelajaran || r.kendala ? `<dl class="doc-report">
-        ${r.ringkasan ? `<dt>Ringkasan</dt><dd>${para(r.ringkasan)}</dd>` : ''}
-        ${r.pembelajaran && r.pembelajaran !== '-' ? `<dt>Pembelajaran</dt><dd>${para(r.pembelajaran)}</dd>` : ''}
-        ${r.kendala && r.kendala !== '-' ? `<dt>Kendala</dt><dd>${para(r.kendala)}</dd>` : ''}
+        ${r.ringkasan ? `<dt>Uraian Aktivitas</dt><dd>${para(r.ringkasan)}</dd>` : ''}
+        ${r.pembelajaran && r.pembelajaran !== '-' ? `<dt>Pembelajaran yang Diperoleh</dt><dd>${para(r.pembelajaran)}</dd>` : ''}
+        ${r.kendala && r.kendala !== '-' ? `<dt>Kendala yang Dialami</dt><dd>${para(r.kendala)}</dd>` : ''}
       </dl>` : ''}
       ${photos.length ? `<div class="doc-photos">${photos.map(p => `<figure><img src="${esc(p.src)}" alt=""><figcaption>${esc(p.cap)}</figcaption></figure>`).join('')}</div>` : ''}
     </section>`;
@@ -262,7 +262,7 @@ function renderSlides(days, range) {
           ${d.items.length ? `<ul class="sl-list">${d.items.slice(0, 6).map(e => `<li><span class="sl-time">${esc(e.jam || '')}</span>${esc(e.judul)}</li>`).join('')}
             ${d.items.length > 6 ? `<li class="muted">dan ${d.items.length - 6} kegiatan lainnya</li>` : ''}</ul>`
             : `<p class="sl-absent">Tidak masuk (${esc(d.status.toLowerCase())})${r.keterangan ? `: ${esc(r.keterangan)}` : ''}.</p>`}
-          ${r.pembelajaran && r.pembelajaran !== '-' ? `<blockquote><b>Pembelajaran</b>${para(r.pembelajaran)}</blockquote>` : ''}
+          ${r.pembelajaran && r.pembelajaran !== '-' ? `<blockquote><b>Pembelajaran yang Diperoleh</b>${para(r.pembelajaran)}</blockquote>` : ''}
         </div>
         ${photos.length ? `<div class="sl-photos n${photos.length}">${photos.map(p => `<img src="${esc(p.src)}" alt="${esc(p.cap)}">`).join('')}</div>` : ''}
       </div>
@@ -275,9 +275,9 @@ function renderSlides(days, range) {
   slides.push(`<section class="slide sl-close">
     <h2>Pembelajaran &amp; kendala</h2>
     <div class="sl-two">
-      <div><h3>Yang dipelajari</h3>${lessons.length ? `<ul>${lessons.map(d => `<li><b>${esc(HARI[parseDate(d.date).getDay()])}:</b> ${esc(firstSentence(d.rep.pembelajaran))}</li>`).join('')}</ul>`
+      <div><h3>Pembelajaran yang Diperoleh</h3>${lessons.length ? `<ul>${lessons.map(d => `<li><b>${esc(HARI[parseDate(d.date).getDay()])}:</b> ${esc(firstSentence(d.rep.pembelajaran))}</li>`).join('')}</ul>`
         : '<p class="muted">Belum ada laporan harian yang berisi pembelajaran.</p>'}</div>
-      <div><h3>Kendala</h3>${obstacles.length ? `<ul>${obstacles.map(d => `<li><b>${esc(HARI[parseDate(d.date).getDay()])}:</b> ${esc(firstSentence(d.rep.kendala))}</li>`).join('')}</ul>`
+      <div><h3>Kendala yang Dialami</h3>${obstacles.length ? `<ul>${obstacles.map(d => `<li><b>${esc(HARI[parseDate(d.date).getDay()])}:</b> ${esc(firstSentence(d.rep.kendala))}</li>`).join('')}</ul>`
         : '<p class="muted">Belum ada laporan harian yang berisi kendala.</p>'}</div>
     </div>
     <p class="sl-thanks">Terima kasih</p>
