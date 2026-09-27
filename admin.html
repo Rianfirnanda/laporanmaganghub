@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://generativelanguage.googleapis.com https://api.groq.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=24"></script>
+  <script src="assets/theme.js?v=25"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=24">
+  <link rel="stylesheet" href="assets/style.css?v=25">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -471,14 +471,21 @@
               <ol class="steps-setup">
                 <li>Ketuk <b>Salin kode skrip</b> (kunci rahasia sudah terisi di dalamnya).</li>
                 <li>Buka <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> → proyek baru → hapus isi <i>Code.gs</i> → tempel kode.</li>
-                <li><b>Deploy → Deployment baru → Aplikasi web</b>. Jalankan sebagai: <b>Saya</b>; akses: <b>Siapa saja</b> → Deploy → izinkan akses (pilih akun → <i>Lanjutan</i> → <i>Buka … (tidak aman)</i> → Izinkan).</li>
+                <li><b>Deploy → Deployment baru → Aplikasi web</b>. Jalankan sebagai: <b>Saya</b>; akses: <b>Siapa saja</b> (bukan "Siapa saja yang memiliki Akun Google") → Deploy → izinkan akses (pilih akun → <i>Lanjutan</i> → <i>Buka … (tidak aman)</i> → Izinkan).</li>
+                <li>Ketuk <b>Cek URL</b>: tab baru harus menampilkan <code>"Penerima foto Laporan Magang aktif."</code></li>
                 <li>Salin <b>URL aplikasi web</b> (berakhiran <code>/exec</code>) ke kolom di bawah, isi kata sandi panel, lalu <b>Simpan &amp; tes</b>.</li>
               </ol>
               <div class="actions">
                 <button class="btn btn-light btn-sm" type="button" id="btnScriptCopy"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> Salin kode skrip</button>
                 <button class="btn btn-link btn-sm" type="button" id="btnScriptNewKey">Buat kunci baru</button>
               </div>
-              <label class="field"><span>URL aplikasi web</span><input id="dScriptUrl" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec"></label>
+              <div class="field">
+                <label for="dScriptUrl">URL aplikasi web</label>
+                <div class="input-with-btn">
+                  <input id="dScriptUrl" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+                  <button class="btn btn-light" type="button" id="btnScriptCheck" title="Buka URL di tab baru untuk memeriksa skrip">Cek URL</button>
+                </div>
+              </div>
               <label class="field"><span>Kunci rahasia (terisi otomatis; di perangkat lain, salin dari perangkat pertama)</span><input id="dScriptKey" class="secret-text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore></label>
               <label class="field"><span>Kata sandi panel (untuk mengenkripsi kunci)</span><input id="dScriptPass" type="password" autocomplete="current-password"></label>
               <div class="actions">
@@ -652,8 +659,8 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=24"></script>
-  <script src="assets/ai.js?v=24"></script>
-  <script src="assets/admin.js?v=24"></script>
+  <script src="assets/common.js?v=25"></script>
+  <script src="assets/ai.js?v=25"></script>
+  <script src="assets/admin.js?v=25"></script>
 </body>
 </html>

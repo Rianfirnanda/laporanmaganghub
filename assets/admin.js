@@ -1875,7 +1875,8 @@ async function skrip(aksi, data = {}, { url = scriptUrl(), key = SCRIPT_KEY } = 
       referrerPolicy: 'no-referrer'
     });
   } catch {
-    throw new Error('Apps Script tidak terjangkau. Periksa URL dan koneksi internet.');
+    // Biasanya karena Google membalas halaman login/izin (bukan data) sehingga diblokir browser.
+    throw new Error('Apps Script tidak bisa dibaca. Periksa di script.google.com: Deploy → Kelola deployment → edit → "Yang memiliki akses: Siapa saja" (bukan "…Akun Google"), Versi baru → Deploy, lalu izinkan akses. Ketuk "Cek URL": harus muncul pesan "aktif".');
   }
   let out;
   try { out = await res.json(); } catch {
@@ -1913,6 +1914,13 @@ async function renderScript() {
 
 $('dScriptKey').addEventListener('input', () => {
   if (scriptTemplate) $('scriptCode').textContent = scriptCodeFor($('dScriptKey').value.trim());
+});
+
+$('btnScriptCheck').addEventListener('click', () => {
+  const url = $('dScriptUrl').value.trim();
+  if (!SCRIPT_URL_RE.test(url)) return toast('Isi URL aplikasi web (berakhiran /exec) terlebih dahulu.', true);
+  window.open(url, '_blank', 'noopener');
+  toast('Di tab baru harus muncul {"ok":true,"pesan":"Penerima foto Laporan Magang aktif."}. Bila muncul halaman login/izin, perbaiki akses deployment.');
 });
 
 $('btnScriptCopy').addEventListener('click', async () => {
