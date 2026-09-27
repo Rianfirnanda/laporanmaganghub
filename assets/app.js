@@ -27,8 +27,10 @@ async function init() {
   for (const d of Object.keys(HARIAN)) if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !HARIAN[d]) delete HARIAN[d];
   renderProfile();
   renderSidebar();
+  renderKpis();
   renderBanner();
   renderFooter();
+  startFooterClock();
   fillWeekFilter();
   fillDateFilter();
   bindUI();
@@ -121,20 +123,42 @@ function renderSidebar() {
     ['Durasi', `${total} hari · ${Math.ceil(total / 7)} minggu`]
   ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
 
+  const latest = ENTRIES.reduce((m, e) => (`${e.tanggal} ${e.jam || ''}` > m ? `${e.tanggal} ${e.jam || ''}` : m), '');
+  const stamp = ENTRIES.map(e => e.dicatat).filter(Boolean).sort().pop();
+  $('updated').textContent = stamp ? `Terakhir diperbarui ${formatWaktuWib(new Date(stamp))}`
+    : latest ? `Kegiatan terakhir: ${formatTanggal(latest.slice(0, 10))}` : 'Belum ada kegiatan.';
+}
+
+// Hari kerja (Senin–Jumat) sejak mulai magang sampai hari ini.
+function hariKerja(until) {
+  let n = 0;
+  const end = parseDate(until < CONFIG.tanggalSelesai ? until : CONFIG.tanggalSelesai);
+  for (let d = parseDate(CONFIG.tanggalMulai); d <= end; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() % 6 !== 0) n++;
+  }
+  return n;
+}
+
+function renderKpis() {
+  const today = wibParts(new Date()).tanggal;
+  const hariIni = ENTRIES.filter(e => e.tanggal === today).length;
   const hari = new Set(ENTRIES.map(e => e.tanggal)).size;
   const foto = ENTRIES.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
-  const minggu = new Set(ENTRIES.map(e => mingguKe(CONFIG, e.tanggal))).size;
-  $('stats').innerHTML = [
-    ['grid', ENTRIES.length, 'Kegiatan'],
-    ['calendar', hari, 'Hari'],
-    ['image', foto, 'Foto'],
-    ['history', minggu, 'Minggu']
-  ].map(([ic, v, l]) => `<div class="mini-stat">${icon(ic)}<strong>${v}</strong><span>${l}</span></div>`).join('');
-  const latest = ENTRIES.reduce((m, e) => (e.tanggal > m ? e.tanggal : m), '');
+  const kerja = hariKerja(today);
   const sakit = Object.keys(HARIAN).filter(d => statusOf(d) === 'Sakit').length;
   const izin = Object.keys(HARIAN).filter(d => statusOf(d) === 'Izin').length;
-  $('updated').textContent = (latest ? `Kegiatan terakhir: ${formatTanggal(latest)}` : 'Belum ada kegiatan.') +
-    (sakit || izin ? ` · Sakit ${sakit} hari · Izin ${izin} hari` : '');
+  const hadir = new Set(ENTRIES.map(e => e.tanggal).filter(d => statusOf(d) === 'Hadir')).size;
+  const pct = kerja ? Math.min(100, Math.round(hari / kerja * 100)) : 0;
+  const kpi = (ic, value, label, sub, cls = '') => `<div class="kpi ${cls}">
+    <span class="kpi-icon">${icon(ic)}</span>
+    <div><strong>${value}</strong><span class="kpi-label">${label}</span><small>${sub}</small></div>
+  </div>`;
+  $('kpis').innerHTML = [
+    kpi('grid', ENTRIES.length, 'Kegiatan', hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
+    kpi('calendar', hari, 'Hari terdokumentasi', kerja ? `${pct}% dari ${kerja} hari kerja` : 'Belum dimulai'),
+    kpi('image', foto, 'Foto dokumentasi', `${hari ? (foto / hari).toFixed(1).replace('.', ',') : 0} foto per hari`),
+    kpi('badge', hadir, 'Hari hadir', sakit || izin ? `Sakit ${sakit} · Izin ${izin}` : 'Tanpa sakit/izin')
+  ].join('');
 }
 
 function inisialInstansi(nama) {
@@ -157,9 +181,20 @@ function renderFooter() {
   const periode = `${formatTanggal(CONFIG.tanggalMulai, false)} – ${formatTanggal(CONFIG.tanggalSelesai, false)}`;
   const porto = safeUrl(CONFIG.portofolio ?? DEFAULT_PORTOFOLIO);
   let html = `<div class="footer-col footer-about">
-    <a class="brand brand-light" href="./"><span class="brand-mark">${icon('file')}</span><span class="brand-text">Laporan<b>magang</b></span></a>
-    <p>${esc(CONFIG.nama)}<br>${esc(CONFIG.posisi)} · ${esc(CONFIG.instansi)}<br>${periode}</p>
-    ${porto ? `<a class="btn btn-sm footer-porto" href="${esc(porto)}" target="_blank" rel="noopener">${icon('user')} Lihat portofolio saya</a>` : ''}
+    <a class="brand" href="./"><span class="brand-mark">${icon('file')}</span><span class="brand-text">Laporan<b>magang</b></span></a>
+    <p class="footer-lead">Dokumentasi kegiatan harian <b>${esc(CONFIG.nama)}</b>, ${esc(CONFIG.posisi)} di ${esc(CONFIG.instansi)}.</p>
+    <p class="footer-period">${icon('calendar')} ${periode}</p>
+    ${porto ? `<a class="btn btn-sm footer-porto" href="${esc(porto)}" target="_blank" rel="noopener">${icon('user')} Portofolio saya</a>` : ''}
+  </div>
+  <div class="footer-col">
+    <h4>Jelajahi</h4>
+    <ul>
+      <li><a href="#harian" data-view="harian">${icon('grid')} Kegiatan harian</a></li>
+      <li><a href="#galeri" data-view="galeri">${icon('image')} Galeri foto</a></li>
+      <li><a href="#rekap" data-view="rekap">${icon('history')} Rekap mingguan</a></li>
+      <li><a href="laporan.html?mode=dokumen" data-laporan="dokumen">${icon('file')} Laporan mingguan (A4)</a></li>
+      <li><a href="laporan.html?mode=slide" data-laporan="slide">${icon('printer')} Slide mingguan</a></li>
+    </ul>
   </div>`;
   html += (f.bagian || []).filter(b => b.judul || b.isi).map(b => `<div class="footer-col">
     ${b.judul ? `<h4>${esc(b.judul)}</h4>` : ''}
@@ -168,7 +203,7 @@ function renderFooter() {
   const links = (f.tautan || []).map(l => ({ label: l.label, url: safeUrl(l.url) })).filter(l => l.url);
   if (links.length) {
     html += `<div class="footer-col"><h4>${esc(f.judulTautan || 'Tautan')}</h4><ul>${links.map(l =>
-      `<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || l.url)}</a></li>`).join('')}</ul></div>`;
+      `<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${icon('link')} ${esc(l.label || l.url)}</a></li>`).join('')}</ul></div>`;
   }
   $('footerGrid').innerHTML = html;
   const ikon = safePath(CONFIG.ikonSitus);
@@ -180,6 +215,17 @@ function renderFooter() {
   }
   $('footerText').textContent = f.teks || `© ${new Date().getFullYear()} ${CONFIG.nama} · ${CONFIG.instansi}`;
   $('adminLink').hidden = !CONFIG.tampilkanLinkAdmin;
+}
+
+// Jam server (WIB) di footer, berdetak setiap detik.
+function startFooterClock() {
+  const tick = () => {
+    $('footerTime').textContent = formatWaktuWib(serverNow(), false);
+    $('footerDate').textContent = `${formatTanggal(wibParts().tanggal)} · ${serverSynced ? 'waktu server' : 'jam perangkat'}`;
+  };
+  tick();
+  setInterval(tick, 1000);
+  syncServerTime().then(tick);
 }
 
 // ---------- Filter & tampilan ----------
@@ -209,6 +255,7 @@ function fillDateFilter() {
 function bindUI() {
   $('filterMinggu').addEventListener('input', () => { fillDateFilter(); render(); });
   ['filterTanggal', 'filterCari'].forEach(id => $(id).addEventListener('input', render));
+  $('filterCari').addEventListener('keydown', ev => { if (ev.key === 'Escape') { $('filterCari').value = ''; render(); } });
   $('btnReset').addEventListener('click', () => {
     $('filterMinggu').value = '';
     fillDateFilter();
@@ -304,6 +351,16 @@ function render() {
   });
 
   const list = sortEntries(filtered());
+  const active = Boolean(week || $('filterTanggal').value || $('filterCari').value.trim());
+  $('btnReset').hidden = !active;
+  const nFoto = list.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
+  $('resultInfo').textContent = active
+    ? `${list.length} dari ${ENTRIES.length} kegiatan · ${nFoto} foto`
+    : `${ENTRIES.length} kegiatan · ${new Set(ENTRIES.map(e => e.tanggal)).size} hari · ${nFoto} foto`;
+  const wk = Number(week) || (allDates().length ? mingguKe(CONFIG, allDates().sort().pop()) : 0);
+  $('reportNote').textContent = wk
+    ? `Minggu ke-${wk} (${weekLabel(wk)}). Pilih minggu lain lewat filter.`
+    : 'Unduh laporan resmi (A4) atau slide presentasi mingguan.';
   lbPhotos = [];
   if (view === 'harian') renderHarian(list);
   if (view === 'galeri') renderGaleri(list);
@@ -349,18 +406,20 @@ function renderHarian(list) {
   if (!list.length && !absent.length) { $('view-harian').innerHTML = noMatch(); return; }
   let html = '';
   for (const [w, days] of groupByWeek(list, absent)) {
-    html += `<div class="week-label"><span>Minggu ke-${w}</span><small>${weekLabel(w)}</small></div>`;
+    const nWeek = [...days.values()].reduce((n, x) => n + x.length, 0);
+    html += `<div class="week-label"><span>Minggu ke-${w}</span><small>${weekLabel(w)} · ${nWeek} kegiatan</small></div>`;
     for (const [tgl, items] of days) {
+      const nFoto = items.reduce((n, e) => n + (e.foto || []).filter(safePath).length, 0);
       html += `<article class="card day">
         <header class="card-header day-head">
           <span class="head-icon">${icon('calendar')}</span>
           <div class="head-text">
             <h3>${formatTanggal(tgl)}</h3>
-            <span>Hari ke-${hariKe(CONFIG, tgl)} · Minggu ke-${w}</span>
+            <span>Hari ke-${hariKe(CONFIG, tgl)}${items.length ? ` · ${items.length} kegiatan · ${nFoto} foto` : ''}</span>
           </div>
           <div class="day-actions">
             ${statusOf(tgl) !== 'Hadir' ? `<span class="pill pill-${statusOf(tgl).toLowerCase()}">${statusOf(tgl)}</span>`
-              : `<span class="pill pill-green">${items.length} kegiatan</span>`}
+              : `<span class="pill pill-green">${icon('check')} Hadir</span>`}
             ${hasReport(tgl) ? `<button class="btn btn-light btn-sm" type="button" data-report="${tgl}">${icon('file')} Laporan harian</button>` : ''}
           </div>
         </header>
@@ -385,13 +444,33 @@ function renderStep(e) {
       <div class="step-meta">
         <span class="time">${esc(e.jam || '')}</span>
         <span class="sesi sesi-${sesi.toLowerCase()}">${sesi}</span>
-        ${e.lokasi ? `<span class="lokasi">${icon('pin')}${esc(e.lokasi)}</span>` : ''}
+        ${lokasiHtml(e)}
       </div>
       <h4>${esc(e.judul)}</h4>
       ${e.keterangan ? `<p class="ket" title="Ketuk untuk membaca selengkapnya">${esc(e.keterangan)}</p>` : ''}
       ${photos ? `<div class="photos">${photos}</div>` : ''}
+      ${dicatatHtml(e)}
     </div>
   </li>`;
+}
+
+function lokasiHtml(e) {
+  const k = e.koordinat;
+  const ok = k && Number.isFinite(k.lat) && Number.isFinite(k.lng) && Math.abs(k.lat) <= 90 && Math.abs(k.lng) <= 180;
+  const text = esc(e.lokasi || (ok ? `${k.lat.toFixed(5)}, ${k.lng.toFixed(5)}` : ''));
+  if (!text) return '';
+  return ok
+    ? `<a class="lokasi" href="https://www.google.com/maps?q=${k.lat},${k.lng}" target="_blank" rel="noopener noreferrer" title="Buka titik GPS di Google Maps">${icon('pin')}${text}</a>`
+    : `<span class="lokasi">${icon('pin')}${text}</span>`;
+}
+
+// Waktu pencatatan dari server saat kegiatan disimpan di panel admin.
+function dicatatHtml(e) {
+  const t = e.dicatat && new Date(e.dicatat);
+  if (!t || Number.isNaN(t.getTime())) return '';
+  const w = wibParts(t);
+  const hari = w.tanggal === e.tanggal ? '' : `${formatTanggal(w.tanggal, false)}, `;
+  return `<p class="dicatat" title="Waktu diambil dari server, bukan dari jam HP">${icon('clock')} Dicatat ${hari}${w.jam.replace(':', '.')}.${w.detik} WIB · waktu server${e.koordinat ? ' · lokasi GPS' : ''}</p>`;
 }
 
 // ---------- Galeri ----------

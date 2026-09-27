@@ -1,0 +1,55 @@
+name: Laporan harian AI
+
+# Menulis laporan harian (ringkasan, pembelajaran, kendala) secara otomatis
+# setiap kegiatan disimpan, plus pengecekan sore sebelum absen monev.
+# Butuh secret GEMINI_API_KEY dan/atau GROQ_API_KEY (Settings → Secrets → Actions).
+on:
+  push:
+    branches: [main]
+    paths: ['data/kegiatan.json']
+  schedule:
+    - cron: '40 8 * * *'   # 15.40 WIB
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: laporan-harian-ai
+  cancel-in-progress: false
+
+jobs:
+  tulis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Beri waktu panel admin menulis laporannya sendiri
+        if: github.event_name == 'push'
+        run: sleep 75
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Tulis laporan harian yang belum ada/berubah
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node scripts/laporan-harian.mjs
+
+      - name: Simpan ke repositori
+        run: |
+          if git diff --quiet -- data; then echo "Tidak ada perubahan."; exit 0; fi
+          git config user.name "laporan-magang-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/harian.json data/ringkasan.json
+          git commit -m "Laporan harian AI (otomatis)"
+          for i in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main || { git rebase --abort; echo "Bentrok dengan perubahan baru; dicoba lagi pada jadwal berikutnya."; exit 0; }
+          done
+          exit 1

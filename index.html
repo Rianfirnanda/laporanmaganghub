@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=13"></script>
+  <script src="assets/theme.js?v=15"></script>
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=13">
+  <link rel="stylesheet" href="assets/style.css?v=15">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -79,6 +79,10 @@
     </div></div>
   </header>
 
+  <div class="container">
+    <section class="kpis" id="kpis" aria-label="Ringkasan angka"></section>
+  </div>
+
   <div class="tabbar">
     <div class="container"><div class="tabbar-inner" role="tablist">
       <button class="tabbar-item active" type="button" role="tab" data-view="harian">
@@ -108,19 +112,24 @@
     <div class="layout">
       <div class="main-col">
         <section class="card filters">
-          <label class="field">
-            <span>Minggu</span>
-            <select id="filterMinggu"><option value="">Semua minggu</option></select>
+          <label class="search-box filter-search">
+            <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="filterCari" placeholder="Cari kegiatan, lokasi, atau keterangan…" aria-label="Cari kegiatan">
           </label>
-          <label class="field">
-            <span>Tanggal</span>
-            <select id="filterTanggal"><option value="">Semua tanggal</option></select>
-          </label>
-          <label class="field grow">
-            <span>Cari kegiatan</span>
-            <input type="search" id="filterCari" placeholder="Ketik kata kunci…">
-          </label>
-          <button class="btn btn-light" id="btnReset" type="button">Reset</button>
+          <div class="filter-row">
+            <label class="field">
+              <span>Minggu</span>
+              <select id="filterMinggu"><option value="">Semua minggu</option></select>
+            </label>
+            <label class="field">
+              <span>Tanggal</span>
+              <select id="filterTanggal"><option value="">Semua tanggal</option></select>
+            </label>
+          </div>
+          <div class="filter-foot">
+            <span id="resultInfo" aria-live="polite"></span>
+            <button class="btn btn-link btn-sm" id="btnReset" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg> Hapus filter</button>
+          </div>
         </section>
 
         <section id="view-harian" class="view" aria-live="polite"><p class="empty">Memuat kegiatan…</p></section>
@@ -156,9 +165,13 @@
         </section>
 
         <section class="card">
-          <div class="card-header"><h3>Ringkasan</h3></div>
-          <div class="card-body">
-            <div class="mini-stats" id="stats"></div>
+          <div class="card-header"><h3>Laporan mingguan</h3></div>
+          <div class="card-body side-body">
+            <p class="side-note" id="reportNote">Unduh laporan resmi (A4) atau slide presentasi mingguan.</p>
+            <div class="side-actions">
+              <a class="btn btn-primary" href="laporan.html?mode=dokumen" data-laporan="dokumen"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> Laporan (A4)</a>
+              <a class="btn btn-outline" href="laporan.html?mode=slide" data-laporan="slide"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg> Slide</a>
+            </div>
             <p class="updated" id="updated"></p>
           </div>
         </section>
@@ -168,13 +181,22 @@
 
   <footer class="site-footer" id="tentang">
     <div class="container">
-      <div class="footer-grid" id="footerGrid"></div>
+      <div class="footer-card">
+        <div class="footer-grid" id="footerGrid"></div>
+        <div class="footer-bar">
+          <div class="footer-clock" title="Waktu dari server, bukan dari jam perangkat">
+            <span class="live-dot" aria-hidden="true"></span>
+            <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
+            <span><strong class="sc-time" id="footerTime">--.--.-- WIB</strong> <small id="footerDate">Waktu server</small></span>
+          </div>
+          <a class="btn btn-sm footer-admin" href="admin.html" id="adminLink" hidden>
+            <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Panel admin
+          </a>
+        </div>
+      </div>
       <div class="footer-bottom">
         <span id="footerText"></span>
-        <span class="footer-links">
-          <a id="portoLink" target="_blank" rel="noopener" hidden></a>
-          <a href="admin.html" id="adminLink" hidden>Panel admin</a>
-        </span>
+        <a id="portoLink" target="_blank" rel="noopener" hidden></a>
       </div>
     </div>
   </footer>
@@ -200,7 +222,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=13"></script>
-  <script src="assets/app.js?v=13"></script>
+  <script src="assets/common.js?v=15"></script>
+  <script src="assets/app.js?v=15"></script>
 </body>
 </html>

@@ -130,7 +130,7 @@ async function saveSession() {
   try {
     const key = await deviceKey();
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const body = JSON.stringify({ token: TOKEN, ai: AI_KEY, exp: rememberMe ? Date.now() + REMEMBER_DAYS * 86400000 : 0 });
+    const body = JSON.stringify({ token: TOKEN, ai: AI_KEY, groq: GROQ_KEY, exp: rememberMe ? Date.now() + REMEMBER_DAYS * 86400000 : 0 });
     const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(body)));
     const blob = JSON.stringify({ iv: toB64(iv), data: toB64(data) });
     clearSession();
@@ -251,6 +251,7 @@ function show(id) {
   ['authSetup', 'authUnlock', 'app'].forEach(x => { $(x).hidden = x !== id; });
   $('btnLock').hidden = id !== 'app';
   $('tabbar').hidden = id !== 'app';
+  $('fabCam').hidden = id !== 'app' || !['kegiatan', 'harian'].some(t => !document.querySelector(`.panel[data-panel="${t}"]`).hidden);
   renderHero(id === 'app');
 }
 
@@ -362,6 +363,7 @@ $('formUnlock').addEventListener('submit', async ev => {
     }
     failCount = 0;
     AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
+    GROQ_KEY = stored.groqEnc ? await decryptToken(stored.groqEnc, $('uPass').value).catch(() => '') : '';
     $('uPass').value = '';
     rememberMe = $('uRemember').checked;
     saveSession();
@@ -384,22 +386,42 @@ async function enterApp() {
   renderAi();
   refreshAiModels();
   if (!$('hTanggal').value) $('hTanggal').value = todayStr();
+  startServerClock();
+  handleShortcut();
   await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
   renderHarianForm();
+  catchUpAi();
+}
+
+// Pintasan dari ikon aplikasi di layar utama HP (manifest.webmanifest).
+function handleShortcut() {
+  const url = new URL(location.href);
+  const aksi = url.searchParams.get('aksi');
+  if (!aksi) return;
+  url.searchParams.delete('aksi');
+  history.replaceState(null, '', url);
+  if (aksi === 'harian') return openTab('harian');
+  openTab('kegiatan');
+  if (aksi === 'kamera') {
+    $('quickCam').classList.add('pulse');
+    $('cardForm').scrollIntoView({ block: 'start' });
+    toast('Ketuk "Ambil foto" untuk membuka kamera. Lokasi dan waktu server diisi otomatis.');
+  }
 }
 
 function lock(reason) {
   clearSession();
   TOKEN = '';
   AI_KEY = '';
+  GROQ_KEY = '';
   harian = {};
   driveToken = null;
   entries = [];
   CFG = null;
   $('entryList').innerHTML = '<p class="empty">Memuat…</p>';
+  if (readStore()) showUnlock(); else showSetup();
   resetForm();
   resetImageSlots();
-  if (readStore()) showUnlock(); else showSetup();
   if (reason) toast(reason);
 }
 
@@ -409,14 +431,23 @@ $('btnLock').addEventListener('click', () => {
 });
 
 // ================= Tab =================
+function openTab(name) {
+  document.querySelectorAll('#tabbar [data-tab]').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === name);
+    t.setAttribute('aria-selected', String(t.dataset.tab === name));
+  });
+  document.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== name; });
+  $('fabCam').hidden = !['kegiatan', 'harian'].includes(name);
+  if (name === 'harian') {
+    renderHarianEntries();
+    if (!gps && !gpsPromise) autoLocate();
+    catchUpAi();
+  }
+}
+
 $('tabbar').addEventListener('click', ev => {
   const btn = ev.target.closest('[data-tab]');
-  if (!btn) return;
-  document.querySelectorAll('.tabbar-item').forEach(t => {
-    t.classList.toggle('active', t === btn);
-    t.setAttribute('aria-selected', String(t === btn));
-  });
-  document.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== btn.dataset.tab; });
+  if (btn) openTab(btn.dataset.tab);
 });
 
 // ================= Foto =================
@@ -507,10 +538,12 @@ function resetForm() {
   newPhotos.forEach(p => URL.revokeObjectURL(p.url));
   newPhotos = []; keptPhotos = []; removedPhotos = [];
   $('formEntry').reset();
-  $('fTanggal').value = todayStr();
-  const now = new Date();
-  $('fJam').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  $('fSesi').value = sesiDariJam($('fJam').value);
+  timeTouched = false;
+  fillFormTime();
+  lokasiAuto = true;
+  gps = null;
+  $('gpsMsg').textContent = '';
+  if (appVisible()) autoLocate();
   $('formTitle').textContent = 'Tambah kegiatan';
   $('btnCancelEdit').hidden = true;
   $('btnSave').textContent = 'Simpan kegiatan';
@@ -528,6 +561,9 @@ function startEdit(id) {
   $('fSesi').value = ['Pagi', 'Siang', 'Sore'].includes(e.sesi) ? e.sesi : sesiDariJam(e.jam);
   $('fJudul').value = e.judul || '';
   $('fLokasi').value = e.lokasi || '';
+  lokasiAuto = false;
+  gps = e.koordinat && Number.isFinite(e.koordinat.lat) ? { ...e.koordinat } : null;
+  $('gpsMsg').textContent = gps ? gpsLabel(gps) : '';
   $('fKet').value = e.keterangan || '';
   keptPhotos = (e.foto || []).filter(safePath);
   $('formTitle').textContent = 'Edit kegiatan';
@@ -539,6 +575,225 @@ function startEdit(id) {
 }
 
 $('fJam').addEventListener('change', () => { $('fSesi').value = sesiDariJam($('fJam').value); });
+['fTanggal', 'fJam'].forEach(id => $(id).addEventListener('input', () => { timeTouched = true; }));
+$('fLokasi').addEventListener('input', () => { lokasiAuto = false; });
+
+// ================= Waktu server =================
+let timeTouched = false;   // tanggal/jam diubah manual: jangan ditimpa jam server
+let clockTimer = null;
+
+function appVisible() { return !$('app').hidden; }
+
+function fillFormTime() {
+  if (editingId || timeTouched) return;
+  const w = wibParts();
+  $('fTanggal').value = w.tanggal;
+  $('fJam').value = w.jam;
+  $('fSesi').value = sesiDariJam(w.jam);
+}
+
+function renderClock() {
+  document.querySelectorAll('.sc-time').forEach(el => { el.textContent = formatWaktuWib(serverNow(), false); });
+  $('scNote').textContent = serverSynced ? `${formatTanggal(wibParts().tanggal)} · waktu server` : 'Jam perangkat (server tidak terjangkau)';
+  $('serverClock').classList.toggle('unsynced', !serverSynced);
+}
+
+function startServerClock() {
+  if (clockTimer) return;
+  renderClock();
+  clockTimer = setInterval(() => {
+    renderClock();
+    // Ganti menit di formulir baru selama belum diubah manual.
+    if (!editingId && !timeTouched && $('fJam').value !== wibParts().jam) fillFormTime();
+  }, 1000);
+  const sync = () => syncServerTime().then(() => { renderClock(); fillFormTime(); });
+  sync();
+  setInterval(sync, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+}
+
+// ================= Lokasi GPS =================
+let gps = null;           // { lat, lng, akurasi } posisi terakhir untuk kegiatan ini
+let lokasiAuto = true;    // kolom lokasi masih boleh diisi otomatis
+let gpsPromise = null;
+const geoCache = [];      // { lat, lng, nama } agar tidak memanggil layanan peta berulang
+
+function gpsLabel(g) {
+  return `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}${g.akurasi ? ` · akurasi ±${Math.round(g.akurasi)} m` : ''}`;
+}
+
+function distanceM(a, b) {
+  const R = 6371000, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function placeName(d) {
+  const a = d.address || {};
+  const parts = [
+    d.name || a.amenity || a.office || a.building || a.shop || a.tourism,
+    a.road,
+    a.village || a.suburb || a.neighbourhood || a.hamlet || a.city_district,
+    a.county || a.city || a.town || a.municipality || a.state_district
+  ].map(x => String(x || '').trim()).filter(Boolean);
+  return [...new Set(parts)].join(', ').slice(0, 160);
+}
+
+async function reverseGeocode(lat, lng) {
+  const hit = geoCache.find(c => distanceM(c, { lat, lng }) < 40);
+  if (hit) return hit.nama;
+  let nama = '';
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=id`,
+      { referrerPolicy: 'origin', credentials: 'omit' });
+    if (r.ok) nama = placeName(await r.json());
+  } catch { /* coba layanan cadangan */ }
+  if (!nama) {
+    try {
+      const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`, { credentials: 'omit' });
+      if (r.ok) {
+        const d = await r.json();
+        nama = [...new Set([d.locality, d.city, d.principalSubdivision].filter(Boolean))].join(', ');
+      }
+    } catch { /* tanpa nama tempat */ }
+  }
+  if (nama) geoCache.push({ lat, lng, nama });
+  return nama;
+}
+
+function currentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) return reject(new Error('Perangkat ini tidak mendukung GPS.'));
+    navigator.geolocation.getCurrentPosition(resolve, e => reject(new Error(
+      e.code === 1 ? 'Izin lokasi ditolak. Izinkan akses lokasi untuk situs ini di pengaturan browser.'
+        : e.code === 3 ? 'GPS terlalu lama merespons. Coba di tempat terbuka lalu tekan tombol GPS lagi.'
+        : 'Lokasi tidak bisa ditentukan. Pastikan GPS/lokasi HP menyala.')),
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  });
+}
+
+// Ambil koordinat, lalu nama tempatnya. Kolom lokasi hanya diisi bila belum diketik sendiri.
+function locate() {
+  if (gpsPromise) return gpsPromise;
+  $('btnGps').classList.add('loading');
+  $('gpsMsg').textContent = 'Mencari lokasi GPS…';
+  gpsPromise = (async () => {
+    const pos = await currentPosition();
+    gps = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6), akurasi: Math.round(pos.coords.accuracy || 0) };
+    $('gpsMsg').textContent = gpsLabel(gps);
+    $('hLok').textContent = `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}`;
+    const nama = await reverseGeocode(gps.lat, gps.lng);
+    gps.nama = nama;
+    $('hLok').textContent = `${nama || 'Lokasi GPS'} · ±${gps.akurasi || '?'} m`;
+    if (lokasiAuto) {
+      $('fLokasi').value = nama || `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}`;
+      lokasiAuto = true;
+    }
+    return gps;
+  })().catch(e => { $('gpsMsg').textContent = e.message; $('hLok').textContent = e.message; throw e; })
+    .finally(() => { $('btnGps').classList.remove('loading'); gpsPromise = null; });
+  return gpsPromise;
+}
+
+// Otomatis saat formulir baru dibuka; diam bila izin lokasi pernah ditolak.
+async function autoLocate() {
+  try {
+    const st = navigator.permissions && await navigator.permissions.query({ name: 'geolocation' });
+    if (st && st.state === 'denied') { $('gpsMsg').textContent = 'Izin lokasi ditolak; lokasi bisa diketik manual.'; return; }
+  } catch { /* browser tanpa Permissions API */ }
+  locate().catch(() => {});
+}
+
+$('btnGps').addEventListener('click', () => {
+  lokasiAuto = true;
+  locate().then(() => toast('Lokasi GPS diperbarui.')).catch(e => toast(e.message, true));
+});
+
+// ================= Pasang sebagai aplikasi =================
+// Setelah dipasang, tekan lama ikon "Laporan Magang" untuk pintasan Kamera/Laporan.
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', ev => {
+  ev.preventDefault();
+  installPrompt = ev;
+  $('btnInstall').hidden = false;
+});
+$('btnInstall').addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice.catch(() => ({}));
+  installPrompt = null;
+  $('btnInstall').hidden = true;
+  if (outcome === 'accepted') toast('Terpasang. Tekan lama ikon Laporan Magang untuk pintasan "Kamera".');
+});
+window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; });
+
+// ================= Kamera =================
+// Cap di bagian bawah foto: waktu server (WIB), nama tempat, dan koordinat GPS.
+async function stampPhoto(file, waktu, pos) {
+  const img = await loadImage(file);
+  const scale = Math.min(1, 2560 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  const fs = Math.max(14, Math.round(Math.min(w, h) / 30));
+  const lines = [
+    formatWaktuWib(waktu) + (serverSynced ? '' : ' (jam perangkat)'),
+    pos && pos.nama ? pos.nama : $('fLokasi').value.trim(),
+    pos ? `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}${pos.akurasi ? `  ±${pos.akurasi} m` : ''}` : ''
+  ].filter(Boolean);
+  const pad = Math.round(fs * 0.8), lh = Math.round(fs * 1.35);
+  const band = pad * 2 + lh * lines.length;
+  const grad = ctx.createLinearGradient(0, h - band * 1.4, 0, h);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.3, 'rgba(0,0,0,.55)');
+  grad.addColorStop(1, 'rgba(0,0,0,.75)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, h - band * 1.4, w, band * 1.4);
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'top';
+  ctx.shadowColor = 'rgba(0,0,0,.6)';
+  ctx.shadowBlur = fs / 4;
+  lines.forEach((t, i) => {
+    ctx.font = `${i === 0 ? 700 : 500} ${i === 0 ? fs : Math.round(fs * 0.85)}px "Plus Jakarta Sans", system-ui, sans-serif`;
+    let text = t;
+    while (ctx.measureText(text).width > w - pad * 2 && text.length > 4) text = text.slice(0, -2);
+    if (text !== t) text = text.slice(0, -1) + '…';
+    ctx.fillText(text, pad, h - band + pad + i * lh);
+  });
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+  const w2 = wibParts(waktu);
+  return new File([blob], `IMG_${w2.tanggal.replaceAll('-', '')}_${w2.jam.replace(':', '')}${w2.detik}.jpg`, { type: 'image/jpeg' });
+}
+
+async function addCameraPhoto(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const waktu = serverNow();            // saat foto diterima dari kamera
+  if (!timeTouched && !editingId) fillFormTime();
+  if (!$('fStamp').checked) return addFiles([file]);
+  msg('saveMsg', 'Menambahkan cap waktu & lokasi…');
+  let pos = gps;
+  if (!pos) {
+    try { pos = await Promise.race([locate(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]); } catch { pos = gps; }
+  }
+  try {
+    addFiles([await stampPhoto(file, waktu, pos)]);
+  } catch {
+    addFiles([file]);
+  }
+  msg('saveMsg', '');
+  $('previews').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.querySelectorAll('input[type="file"][capture]').forEach(inp => inp.addEventListener('change', ev => {
+  $('quickCam').classList.remove('pulse');
+  const [file] = ev.target.files;
+  ev.target.value = '';
+  if (document.querySelector('.panel[data-panel="kegiatan"]').hidden) openTab('kegiatan');
+  addCameraPhoto(file).catch(e => toast(e.message, true));
+}));
 $('btnCancelEdit').addEventListener('click', resetForm);
 
 $('formEntry').addEventListener('submit', async ev => {
@@ -573,6 +828,11 @@ $('formEntry').addEventListener('submit', async ev => {
       foto: [...keptPhotos, ...uploaded]
     };
     if (!data.lokasi) delete data.lokasi;
+    if (gps) data.koordinat = { lat: gps.lat, lng: gps.lng, ...(gps.akurasi ? { akurasi: gps.akurasi } : {}) };
+    // Waktu pencatatan dari server (tidak bisa diatur dari jam HP); dipertahankan saat edit.
+    const prev = entries.find(x => x.id === id);
+    if (prev && prev.dicatat) data.dicatat = prev.dicatat;
+    else if (!prev && serverSynced) data.dicatat = serverNow().toISOString();
 
     msg('saveMsg', 'Menyimpan ke GitHub…');
     const isEdit = Boolean(editingId);
@@ -888,6 +1148,7 @@ $('formPass').addEventListener('submit', async ev => {
     const token = await decryptToken(stored.enc, $('pOld').value);
     const next = { ...stored, enc: await encryptToken(token, $('pNew').value) };
     if (stored.aiEnc) next.aiEnc = await encryptToken(await decryptToken(stored.aiEnc, $('pOld').value), $('pNew').value);
+    if (stored.groqEnc) next.groqEnc = await encryptToken(await decryptToken(stored.groqEnc, $('pOld').value), $('pNew').value);
     writeStore(next);
     $('formPass').reset();
     toast('Kata sandi panel diganti.');
@@ -962,33 +1223,13 @@ function setDeployStatus(state) {
 // itu; hasilnya bisa diedit, disalin, dan disimpan ke data/harian.json.
 const HARIAN_PATH = 'data/harian.json';
 const STATUS_HADIR = ['Hadir', 'Sakit', 'Izin'];
-const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
-const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
 let harian = {};
-let AI_KEY = '';   // hanya di memori; tersimpan terenkripsi sebagai stored.aiEnc
+let AI_KEY = '';    // kunci Gemini, hanya di memori; tersimpan terenkripsi sebagai stored.aiEnc
+let GROQ_KEY = '';  // kunci Groq (cadangan), tersimpan terenkripsi sebagai stored.groqEnc
 const lastAi = {};  // hasil AI terakhir per tanggal (untuk menandai laporan "auto")
 let aiModels = [];  // model Gemini yang tersedia untuk kunci ini
 
-const AI_SYSTEM = `Kamu membantu seorang peserta magang menulis laporan harian untuk daftar hadir di monev MagangHub Kemnaker. Laporan diisi setiap sore dan terdiri dari tiga bagian: ringkasan kegiatan, pembelajaran yang didapat, dan kendala yang dihadapi.
-
-Tulis seolah-olah peserta sendiri yang menulis: bahasa Indonesia sehari-hari yang sopan, sudut pandang orang pertama ("saya"), kalimat yang mengalir, tanpa poin-poin, tanpa judul, tanpa emoji, dan tanpa kalimat pembuka seperti "Berikut" atau "Pada hari ini saya telah melaksanakan". Variasikan susunan kalimat dan hindari frasa klise seperti "sangat bermanfaat", "menambah wawasan", atau "secara keseluruhan".
-
-- ringkasan: 2-4 kalimat tentang apa saja yang dikerjakan dari pagi sampai sore, mengikuti urutan catatan. Sebut hal konkret (nama pekerjaan, jumlah, aplikasi, tempat) bila ada di catatan.
-- pembelajaran: 1-3 kalimat tentang hal yang dipelajari atau keterampilan yang terasah dari kegiatan itu, masuk akal berdasarkan catatan, bukan pujian umum.
-- kendala: 1-2 kalimat tentang kendala yang tersirat di catatan beserta cara mengatasinya bila disebut. Jika catatan tidak menyebut kendala, tulis singkat dan jujur bahwa tidak ada kendala berarti; jangan mengarang masalah.
-
-Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan, lalu isi pembelajaran dan kendala dengan "-" bila tidak relevan.`;
-
-const HARIAN_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    ringkasan: { type: 'STRING' },
-    pembelajaran: { type: 'STRING' },
-    kendala: { type: 'STRING' }
-  },
-  required: ['ringkasan', 'pembelajaran', 'kendala'],
-  propertyOrdering: ['ringkasan', 'pembelajaran', 'kendala']
-};
+function hasAi() { return Boolean(AI_KEY || GROQ_KEY); }
 
 async function loadHarian() {
   try {
@@ -1068,107 +1309,45 @@ document.addEventListener('click', async ev => {
   }
 });
 
-function harianPrompt(date, status = $('hStatus').value, ket = $('hKet').value.trim()) {
-  const c = CFG || {};
-  const items = dayEntries(date);
-  const lines = items.map(e => {
-    const parts = [`- ${e.jam || '??:??'} (${e.sesi || sesiDariJam(e.jam)}): ${e.judul}`];
-    if (e.lokasi) parts.push(`Lokasi: ${e.lokasi}.`);
-    if (e.keterangan) parts.push(`Catatan: ${e.keterangan.replace(/\s+/g, ' ')}`);
-    return parts.join(' ');
-  });
-  const prev = Object.keys(harian).filter(d => d < date && harian[d].ringkasan).sort().pop();
-  return [
-    `Peserta: ${c.posisi || 'peserta magang'} di ${c.instansi || 'instansi'}.`,
-    `Tanggal: ${formatTanggal(date)}. Status kehadiran: ${status}${ket ? ` (${ket})` : ''}.`,
-    '',
-    lines.length ? `Catatan kegiatan hari ini, urut jam:\n${lines.join('\n')}` : 'Tidak ada catatan kegiatan pada hari ini.',
-    prev ? `\nRingkasan laporan hari sebelumnya, untuk dihindari susunan kalimatnya agar tidak berulang:\n${harian[prev].ringkasan}` : '',
-    '',
-    'Tulis ketiga isian laporan daftar hadir untuk hari ini.'
-  ].join('\n');
-}
-
-// Gemini API dipanggil langsung dari browser dengan kunci milik pengguna.
-async function gemini(path, body) {
-  const res = await fetch(`${GEMINI_API}/${path}`, {
-    method: body ? 'POST' : 'GET',
-    cache: 'no-store',
-    referrerPolicy: 'no-referrer',
-    headers: { 'x-goog-api-key': AI_KEY, ...(body ? { 'content-type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!res.ok) {
-    let m = res.statusText;
-    let reason = '';
-    try {
-      const err = (await res.json()).error || {};
-      m = err.message || m;
-      reason = JSON.stringify(err.details || '');
-    } catch { /* abaikan */ }
-    if (/API_KEY_INVALID|API key not valid/i.test(`${m} ${reason}`)) m = 'Kunci API Gemini tidak valid.';
-    else if (res.status === 429) m = 'Kuota gratis Gemini sedang habis. Tunggu sebentar (atau sampai besok) lalu coba lagi.';
-    else if (res.status === 403) m = 'Kunci API tidak diizinkan memakai Gemini API. Pastikan kunci dibuat di Google AI Studio.';
-    throw new Error(`Gemini ${res.status}: ${m}`);
-  }
-  return res.json();
-}
-
-// Pilih model "Flash" terbaru yang stabil (keluarga dengan kuota gratis).
 function pickModel(models) {
   const flash = models.filter(m => /flash/.test(m) && !/lite|image|tts|audio|live|embed|thinking|exp/.test(m));
   const stable = flash.filter(m => !/preview/.test(m));
   const ver = m => (m.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1] * 1;
   const best = list => list.slice().sort((a, b) => ver(b) - ver(a) || a.length - b.length)[0];
-  return best(stable) || best(flash) || GEMINI_FALLBACK_MODEL;
+  return best(stable) || best(flash) || AI_GEMINI_DEFAULT;
 }
 
 async function loadAiModels() {
-  const data = await gemini('models?pageSize=200');
-  aiModels = (data.models || [])
-    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-    .map(m => m.name.replace(/^models\//, ''))
-    .filter(m => /^gemini-/.test(m));
+  aiModels = await listGeminiModels(AI_KEY);
   return aiModels;
 }
 
 function currentModel() {
   const stored = readStore();
-  return (stored && stored.aiModel) || GEMINI_FALLBACK_MODEL;
+  return (stored && stored.aiModel) || AI_GEMINI_DEFAULT;
 }
 
-async function generateHarian(date, status = $('hStatus').value, ket = $('hKet').value.trim()) {
-  if (!AI_KEY) throw new Error('Kunci API Gemini belum diatur. Isi di kartu "Asisten AI".');
+// Satu pintu untuk semua permintaan AI: Gemini (beberapa model) lalu Groq.
+async function runAi(opts, msgId) {
+  const res = await aiGenerate({
+    keys: { gemini: AI_KEY, groq: GROQ_KEY },
+    geminiModel: currentModel(),
+    geminiModels: aiModels,
+    onStatus: msgId ? t => msg(msgId, t) : null,
+    ...opts
+  });
+  lastAiModel = `${res.provider} · ${res.model}`;
+  return res.data;
+}
+let lastAiModel = '';
+
+async function generateHarian(date, status = $('hStatus').value, ket = $('hKet').value.trim(), msgId) {
+  if (!hasAi()) throw new Error('Kunci API AI belum diatur. Isi di kartu "Asisten AI".');
   if (!dayEntries(date).length && status === 'Hadir') {
     throw new Error('Belum ada kegiatan pada tanggal ini. Tambahkan kegiatan dulu atau ubah status kehadiran.');
   }
-  const data = await gemini(`models/${encodeURIComponent(currentModel())}:generateContent`, {
-    systemInstruction: { parts: [{ text: AI_SYSTEM }] },
-    contents: [{ role: 'user', parts: [{ text: harianPrompt(date, status, ket) }] }],
-    generationConfig: {
-      temperature: 0.9,
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-      responseSchema: HARIAN_SCHEMA
-    }
-  });
-  if (data.promptFeedback && data.promptFeedback.blockReason) {
-    throw new Error('Gemini menolak memproses catatan ini. Coba ubah catatan kegiatan.');
-  }
-  const cand = (data.candidates || [])[0];
-  if (!cand) throw new Error('Gemini tidak memberi jawaban. Coba lagi.');
-  if (cand.finishReason === 'MAX_TOKENS') throw new Error('Jawaban AI terpotong. Coba lagi.');
-  if (cand.finishReason && !['STOP', 'FINISH_REASON_UNSPECIFIED'].includes(cand.finishReason)) {
-    throw new Error(`Gemini berhenti (${cand.finishReason}). Coba ubah catatan kegiatan lalu ulangi.`);
-  }
-  const text = ((cand.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
-  let out;
-  try { out = JSON.parse(text); } catch { throw new Error('Jawaban AI tidak terbaca. Coba lagi.'); }
-  return {
-    ringkasan: String(out.ringkasan || '').trim(),
-    pembelajaran: String(out.pembelajaran || '').trim(),
-    kendala: String(out.kendala || '').trim()
-  };
+  const prompt = buildHarianPrompt({ config: CFG || {}, entries, harian, date, status, ket, tanggalLabel: formatTanggal(date) });
+  return cleanHarian(await runAi({ system: AI_SYSTEM, prompt, schema: HARIAN_SCHEMA, temperature: 0.9 }, msgId));
 }
 
 $('btnAi').addEventListener('click', async ev => {
@@ -1176,13 +1355,13 @@ $('btnAi').addEventListener('click', async ev => {
   const hasText = ['hRingkasan', 'hPembelajaran', 'hKendala'].some(id => $(id).value.trim());
   if (hasText && !confirm('Isian yang ada akan diganti dengan tulisan baru dari AI. Lanjutkan?')) return;
   await withBusy(ev.currentTarget, async () => {
-    msg('aiMsg', 'Gemini sedang menulis laporan…');
-    const out = await generateHarian(date);
+    msg('aiMsg', 'AI sedang menulis laporan…');
+    const out = await generateHarian(date, undefined, undefined, 'aiMsg');
     lastAi[date] = out;
     $('hRingkasan').value = out.ringkasan;
     $('hPembelajaran').value = out.pembelajaran;
     $('hKendala').value = out.kendala;
-    toast('Laporan selesai ditulis. Periksa dulu, lalu klik Simpan laporan.');
+    toast(`Laporan selesai ditulis (${lastAiModel}). Periksa dulu, lalu klik Simpan laporan.`);
   }, 'aiMsg');
 });
 
@@ -1200,7 +1379,21 @@ $('formHarian').addEventListener('submit', async ev => {
   // "auto": tulisan AI yang tidak diubah; boleh ditulis ulang otomatis saat kegiatan bertambah.
   const ai = lastAi[date] || (harian[date] && harian[date].auto ? harian[date] : null);
   rec.auto = Boolean(ai && ['ringkasan', 'pembelajaran', 'kendala'].every(k => (ai[k] || '') === rec[k]));
+  if (rec.auto) {
+    rec.sumber = sumberHarian(entries, date);
+    if (harian[date] && harian[date].model) rec.model = harian[date].model;
+    if (lastAiModel && lastAi[date]) rec.model = lastAiModel;
+  }
   if (!rec.keterangan) delete rec.keterangan;
+  // Lokasi GPS & waktu server saat laporan disimpan (untuk laporan hari ini).
+  if (date === wibParts().tanggal && gps) {
+    rec.lokasi = gps.nama || `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}`;
+    rec.koordinat = { lat: gps.lat, lng: gps.lng, ...(gps.akurasi ? { akurasi: gps.akurasi } : {}) };
+  } else if (harian[date]) {
+    if (harian[date].lokasi) rec.lokasi = harian[date].lokasi;
+    if (harian[date].koordinat) rec.koordinat = harian[date].koordinat;
+  }
+  if (serverSynced) rec.diperbarui = serverNow().toISOString();
   const empty = rec.status === 'Hadir' && !rec.ringkasan && !rec.pembelajaran && !rec.kendala;
   await withBusy($('btnSaveHarian'), async () => {
     msg('harianMsg', 'Menyimpan ke GitHub…');
@@ -1224,117 +1417,91 @@ $('formHarian').addEventListener('submit', async ev => {
 // (kecuali sudah Anda edit sendiri), lalu ringkasan dasbor diperbarui.
 const RINGKASAN_PATH = 'data/ringkasan.json';
 
-const SUMMARY_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    mingguIni: { type: 'STRING' },
-    sorotan: { type: 'ARRAY', items: { type: 'STRING' } },
-    keseluruhan: { type: 'STRING' }
-  },
-  required: ['mingguIni', 'sorotan', 'keseluruhan'],
-  propertyOrdering: ['mingguIni', 'sorotan', 'keseluruhan']
-};
-
-const SUMMARY_SYSTEM = `Kamu menulis ringkasan singkat untuk halaman publik dokumentasi magang seorang peserta. Pembacanya atasan dan pengunjung, jadi tulis dalam bahasa Indonesia yang natural, hangat, dan ringkas, dengan sudut pandang orang ketiga (sebut "peserta" atau nama depannya). Tanpa poin-poin, tanpa emoji, tanpa frasa klise.
-
-- mingguIni: 2-3 kalimat tentang apa saja yang dikerjakan pada minggu terbaru.
-- sorotan: 3 frasa pendek (masing-masing maksimal 6 kata) berisi hal paling menonjol minggu terbaru.
-- keseluruhan: 2-3 kalimat tentang perjalanan magang sejauh ini.
-
-Hanya gunakan fakta dari data. Jangan mengarang kegiatan, angka, atau nama.`;
-
-function summaryPrompt() {
-  const c = CFG || {};
-  const dates = [...new Set([...entries.map(e => e.tanggal), ...Object.keys(harian)])].sort();
-  if (!dates.length) return '';
-  const cfg = { tanggalMulai: c.tanggalMulai || dates[0] };
-  const lastWeek = mingguKe(cfg, dates[dates.length - 1]);
-  const lines = dates.map(d => {
-    const w = mingguKe(cfg, d);
-    const r = harian[d] || {};
-    const titles = dayEntries(d).map(e => e.judul).join('; ');
-    const st = ['Sakit', 'Izin'].includes(r.status) ? ` [${r.status}]` : '';
-    const detail = w === lastWeek && r.ringkasan ? ` Ringkasan: ${r.ringkasan}` : '';
-    return `- Minggu ${w}, ${d}${st}: ${titles || '(tidak ada kegiatan)'}${detail}`;
-  });
-  return [
-    `Peserta: ${c.nama || 'peserta'} (${c.posisi || 'peserta magang'}) di ${c.instansi || 'instansi'}. Minggu terbaru: ${lastWeek}.`,
-    'Data kegiatan per hari:',
-    ...lines.slice(-60)
-  ].join('\n');
+async function generateSummary(msgId) {
+  const built = buildSummaryPrompt({ config: CFG || {}, entries, harian });
+  if (!built) return null;
+  const out = cleanSummary(await runAi({ system: SUMMARY_SYSTEM, prompt: built.prompt, schema: SUMMARY_SCHEMA, temperature: 0.8 }, msgId));
+  return { diperbarui: new Date().toISOString(), minggu: built.minggu, ...out };
 }
 
-async function generateSummary() {
-  const prompt = summaryPrompt();
-  if (!prompt) return null;
-  const data = await gemini(`models/${encodeURIComponent(currentModel())}:generateContent`, {
-    systemInstruction: { parts: [{ text: SUMMARY_SYSTEM }] },
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.8, maxOutputTokens: 4096, responseMimeType: 'application/json', responseSchema: SUMMARY_SCHEMA }
-  });
-  const cand = (data.candidates || [])[0];
-  if (!cand || (cand.finishReason && cand.finishReason !== 'STOP')) throw new Error('Gemini tidak menyelesaikan ringkasan.');
-  const out = JSON.parse(((cand.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join(''));
-  const dates = [...entries.map(e => e.tanggal)].sort();
-  return {
-    diperbarui: new Date().toISOString(),
-    minggu: dates.length ? mingguKe({ tanggalMulai: (CFG && CFG.tanggalMulai) || dates[0] }, dates[dates.length - 1]) : 0,
-    mingguIni: String(out.mingguIni || '').trim(),
-    sorotan: (Array.isArray(out.sorotan) ? out.sorotan : []).map(x => String(x).trim()).filter(Boolean).slice(0, 4),
-    keseluruhan: String(out.keseluruhan || '').trim()
-  };
-}
-
+// Laporan harian ditulis otomatis, tanpa perlu menekan "Buat dengan AI":
+// setelah kegiatan disimpan, saat panel dibuka, dan saat tab Laporan dibuka.
+// Hanya hari yang kegiatannya berubah sejak laporan terakhir yang ditulis ulang,
+// dan laporan yang sudah Anda edit sendiri tidak pernah ditimpa.
 let autoAiRunning = null;
-async function autoAi(date) {
-  if (!AI_KEY) return;
-  if (autoAiRunning) await autoAiRunning.catch(() => {});
-  autoAiRunning = (async () => {
-    msg('autoAiMsg', '✨ AI sedang meringkas kegiatan…');
-    try {
-      const rec = harian[date];
-      const canRewrite = !rec || rec.auto !== false;
-      const report = canRewrite && dayEntries(date).length ? await generateHarian(date, (rec && rec.status) || 'Hadir', (rec && rec.keterangan) || '') : null;
-      if (report) lastAi[date] = report;
-      if (report) Object.assign(harian, { [date]: { ...(rec || {}), status: (rec && rec.status) || 'Hadir', ...report, auto: true, diperbarui: new Date().toISOString() } });
-      const summary = await generateSummary().catch(() => null);
-      if (!report && !summary) return;
-      let latestH;
-      await commit(`Ringkasan AI ${date}`, async base => {
-        const changes = [];
-        if (report) {
-          latestH = await readRepoJSON(HARIAN_PATH, base, {});
-          if (!latestH || typeof latestH !== 'object' || Array.isArray(latestH)) latestH = {};
-          const cur = latestH[date];
-          if (!cur || cur.auto !== false) latestH[date] = harian[date];
-          const sorted = Object.fromEntries(Object.entries(latestH).sort(([a], [b]) => b.localeCompare(a)));
-          changes.push({ path: HARIAN_PATH, content: JSON.stringify(sorted, null, 2) + '\n' });
-        }
-        if (summary) {
-          const old = await readRepoJSON(RINGKASAN_PATH, base, {});
-          const mingguan = { ...((old && old.mingguan) || {}), [summary.minggu]: summary.mingguIni };
-          changes.push({ path: RINGKASAN_PATH, content: JSON.stringify({ ...summary, mingguan }, null, 2) + '\n' });
-        }
-        return changes;
-      });
-      if (latestH) harian = latestH;
-      renderHarianList();
-      if ($('hTanggal').value === date) renderHarianForm();
-      toast('✨ Laporan harian dan ringkasan dasbor diperbarui oleh AI.');
-    } catch (e) {
-      toast(`Kegiatan tersimpan, tetapi ringkasan AI gagal: ${e.message}`, true);
-    } finally {
-      msg('autoAiMsg', '');
-    }
-  })();
+let autoAiFailedAt = 0;
+
+function tanggalPerluAi(dates) {
+  return [...new Set(dates)].filter(d => perluLaporanAi(entries, harian, d)).sort().reverse();
+}
+
+function autoAi(dates, { quiet = false } = {}) {
+  dates = Array.isArray(dates) ? dates : [dates];
+  if (!hasAi()) return Promise.resolve();
+  const prev = autoAiRunning || Promise.resolve();
+  autoAiRunning = prev.catch(() => {}).then(() => runAutoAi(dates, quiet));
   return autoAiRunning;
 }
 
+async function runAutoAi(dates, quiet) {
+  const todo = tanggalPerluAi(dates).slice(0, 5);
+  if (!todo.length) return;
+  const onForm = () => todo.includes($('hTanggal').value);
+  msg('autoAiMsg', '✨ AI sedang menulis laporan harian…');
+  if (onForm()) msg('aiMsg', '✨ AI sedang menulis laporan harian otomatis…');
+  try {
+    const made = {};
+    for (const date of todo) {
+      const rec = harian[date] || {};
+      const report = await generateHarian(date, rec.status || 'Hadir', rec.keterangan || '', onForm() ? 'aiMsg' : 'autoAiMsg');
+      lastAi[date] = report;
+      made[date] = { ...rec, status: rec.status || 'Hadir', ...report, auto: true, sumber: sumberHarian(entries, date), model: lastAiModel, diperbarui: new Date().toISOString() };
+    }
+    const summary = await generateSummary().catch(() => null);
+    let latestH;
+    await commit(`Laporan harian AI ${todo.join(', ')}`, async base => {
+      latestH = await readRepoJSON(HARIAN_PATH, base, {});
+      if (!latestH || typeof latestH !== 'object' || Array.isArray(latestH)) latestH = {};
+      for (const [d, r] of Object.entries(made)) {
+        const cur = latestH[d];
+        if (!cur || cur.auto !== false) latestH[d] = { ...(cur || {}), ...r };
+      }
+      const sorted = Object.fromEntries(Object.entries(latestH).sort(([a], [b]) => b.localeCompare(a)));
+      const changes = [{ path: HARIAN_PATH, content: JSON.stringify(sorted, null, 2) + '\n' }];
+      if (summary) {
+        const old = await readRepoJSON(RINGKASAN_PATH, base, {});
+        const mingguan = { ...((old && old.mingguan) || {}), [summary.minggu]: summary.mingguIni };
+        changes.push({ path: RINGKASAN_PATH, content: JSON.stringify({ ...summary, mingguan }, null, 2) + '\n' });
+      }
+      return changes;
+    });
+    harian = latestH;
+    renderHarianList();
+    if (todo.includes($('hTanggal').value)) renderHarianForm();
+    autoAiFailedAt = 0;
+    if (!quiet) toast(`✨ Laporan harian ${todo.length > 1 ? `${todo.length} hari ` : ''}siap disalin ke monev (${lastAiModel}).`);
+  } catch (e) {
+    autoAiFailedAt = Date.now();
+    toast(`Laporan AI otomatis belum berhasil: ${e.message}`, true);
+  } finally {
+    msg('autoAiMsg', '');
+    msg('aiMsg', '');
+  }
+}
+
+// Susul laporan yang belum ada (7 hari terakhir) setiap panel dibuka.
+function catchUpAi() {
+  if (!hasAi() || Date.now() - autoAiFailedAt < 60000) return;
+  const today = wibParts().tanggal;
+  const recent = [...new Set(entries.map(e => e.tanggal))].filter(d => d <= today).sort().slice(-7);
+  if (tanggalPerluAi(recent).length) autoAi(recent, { quiet: false });
+}
+
 $('btnSummary').addEventListener('click', async ev => {
-  if (!AI_KEY) return toast('Atur kunci API Gemini terlebih dahulu.', true);
+  if (!hasAi()) return toast('Atur kunci API AI terlebih dahulu.', true);
   await withBusy(ev.currentTarget, async () => {
     msg('aiMsg', 'AI sedang menyusun ringkasan dasbor…');
-    const summary = await generateSummary();
+    const summary = await generateSummary('aiMsg');
     if (!summary) throw new Error('Belum ada kegiatan untuk diringkas.');
     await commit('Ringkasan AI dasbor', async base => {
       const old = await readRepoJSON(RINGKASAN_PATH, base, {});
@@ -1345,18 +1512,22 @@ $('btnSummary').addEventListener('click', async ev => {
   }, 'aiMsg');
 });
 
-// ---------- Pengaturan kunci API Gemini ----------
+// ---------- Pengaturan kunci API (Gemini + Groq) ----------
 function renderAi() {
-  const stored = readStore();
-  const has = Boolean(stored && stored.aiEnc);
-  $('aiStatus').textContent = AI_KEY ? `Aktif · ${currentModel()}` : has ? 'Tersimpan (buka ulang panel untuk memakai)' : 'Belum diatur';
+  const stored = readStore() || {};
+  const has = Boolean(stored.aiEnc || stored.groqEnc);
+  const aktif = [AI_KEY && `Gemini (${currentModel()})`, GROQ_KEY && 'Groq'].filter(Boolean);
+  $('aiStatus').textContent = aktif.length ? `Aktif · ${aktif.join(' + ')}` : has ? 'Tersimpan (buka ulang panel untuk memakai)' : 'Belum diatur';
+  $('aiHasGemini').textContent = stored.aiEnc ? '· tersimpan ✓' : '';
+  $('aiHasGroq').textContent = stored.groqEnc ? '· tersimpan ✓' : '';
   $('btnAiForget').hidden = !has;
   $('aiModelWrap').hidden = !AI_KEY;
-  const list = aiModels.length ? aiModels : [currentModel()];
+  const list = aiModels.length ? aiModels.slice() : [currentModel()];
   if (!list.includes(currentModel())) list.unshift(currentModel());
   $('aiModel').innerHTML = list.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
   $('aiModel').value = currentModel();
   $('aiKey').value = '';
+  $('groqKey').value = '';
   $('aiPass').value = '';
 }
 
@@ -1382,48 +1553,70 @@ $('aiModel').addEventListener('change', () => {
 // atau teks seperti "GEMINI_API_KEY=AIza…". Keabsahan kunci tetap diuji langsung ke Google.
 function cleanApiKey(raw) {
   const s = String(raw || '').replace(/[\s\u00A0\u180E\u200B-\u200F\u2028-\u202F\u205F-\u206F\u3000\uFEFF]/g, '');
-  const m = s.match(/AIza[\w-]{20,}/) || s.match(/[\w.-]{20,}/g)?.sort((a, b) => b.length - a.length);
+  const m = s.match(/AIza[\w-]{20,}/) || s.match(/gsk_\w{20,}/) || s.match(/[\w.-]{20,}/g)?.sort((a, b) => b.length - a.length);
   return m ? m[0] : s.replace(/^['"`]+|['"`]+$/g, '');
 }
 
 $('formAi').addEventListener('submit', async ev => {
   ev.preventDefault();
-  const key = cleanApiKey($('aiKey').value);
-  if (!key) return toast('Tempel kunci API Gemini dari Google AI Studio terlebih dahulu.', true);
-  if ($('aiPass').value && [key, $('aiKey').value.trim()].includes($('aiPass').value)) {
-    $('aiKey').value = '';
-    return toast('Kolom kunci terisi kata sandi panel (isi otomatis browser). Tempel kunci API Gemini dari Google AI Studio.', true);
+  const gem = cleanApiKey($('aiKey').value);
+  const groq = cleanApiKey($('groqKey').value);
+  const pass = $('aiPass').value;
+  if (!gem && !groq) return toast('Tempel kunci API Gemini atau Groq terlebih dahulu.', true);
+  for (const [raw, k] of [[$('aiKey').value, gem], [$('groqKey').value, groq]]) {
+    if (k && pass && [k, raw.trim()].includes(pass)) {
+      $('aiKey').value = ''; $('groqKey').value = '';
+      return toast('Kolom kunci terisi kata sandi panel (isi otomatis browser). Tempel kunci API dari Google AI Studio / Groq.', true);
+    }
+    if (k && k.length < 20) return toast(`Kunci terlalu pendek (${k.length} karakter). Salin ulang seluruh kunci.`, true);
   }
-  if (key.length < 20) return toast(`Kunci terlalu pendek (${key.length} karakter). Salin ulang seluruh kunci dari Google AI Studio.`, true);
   const stored = readStore();
   if (!stored) return;
   await withBusy(ev.submitter, async () => {
-    await decryptToken(stored.enc, $('aiPass').value);   // memastikan kata sandi panel benar
-    const prev = AI_KEY;
-    AI_KEY = key;
-    saveSession();
-    let models;
-    try {
-      models = await loadAiModels();                      // sekaligus menguji kunci
-    } catch (e) {
-      AI_KEY = prev;
-      saveSession();
-      throw new Error(`${e.message} (kunci terbaca ${key.length} karakter, diawali "${key.slice(0, 4)}…")`);
+    await decryptToken(stored.enc, pass);   // memastikan kata sandi panel benar
+    const next = { ...stored };
+    const saved = [];
+    if (gem) {
+      let models;
+      try {
+        models = await listGeminiModels(gem);              // sekaligus menguji kunci
+      } catch (e) {
+        throw new Error(`Gemini: ${e.message} (kunci terbaca ${gem.length} karakter, diawali "${gem.slice(0, 4)}…")`);
+      }
+      AI_KEY = gem;
+      aiModels = models;
+      next.aiEnc = await encryptToken(gem, pass);
+      next.aiModel = pickModel(models);
+      saved.push(`Gemini (${next.aiModel})`);
     }
-    writeStore({ ...stored, aiEnc: await encryptToken(key, $('aiPass').value), aiModel: pickModel(models) });
+    if (groq) {
+      try {
+        await listGroqModels(groq);
+      } catch (e) {
+        throw new Error(`Groq: ${e.message} (kunci terbaca ${groq.length} karakter, diawali "${groq.slice(0, 4)}…")`);
+      }
+      GROQ_KEY = groq;
+      next.groqEnc = await encryptToken(groq, pass);
+      saved.push('Groq');
+    }
+    writeStore(next);
+    saveSession();
     renderAi();
-    toast(`Kunci Gemini tersimpan terenkripsi. Model: ${currentModel()}.`);
+    toast(`Kunci ${saved.join(' dan ')} tersimpan terenkripsi.`);
+    catchUpAi();
   });
 });
 
 $('btnAiForget').addEventListener('click', () => {
-  if (!confirm('Hapus kunci API Gemini dari perangkat ini?')) return;
+  if (!confirm('Hapus semua kunci API AI (Gemini dan Groq) dari perangkat ini?')) return;
   const stored = readStore();
-  if (stored) { delete stored.aiEnc; delete stored.aiModel; writeStore(stored); }
+  if (stored) { delete stored.aiEnc; delete stored.aiModel; delete stored.groqEnc; writeStore(stored); }
   AI_KEY = '';
+  GROQ_KEY = '';
   aiModels = [];
+  saveSession();
   renderAi();
-  toast('Kunci API Gemini dihapus dari perangkat ini.');
+  toast('Kunci API AI dihapus dari perangkat ini.');
 });
 
 // ================= Google Drive (salinan foto) =================
@@ -1644,6 +1837,7 @@ window.addEventListener('beforeunload', ev => {
       if (!sess || !sess.token) return;
       TOKEN = sess.token;
       AI_KEY = sess.ai || '';
+      GROQ_KEY = sess.groq || '';
       enterApp().catch(e => toast(e.message, true));
     });
   } else if (legacy) {
