@@ -1,5 +1,30 @@
 [
   {
+    "id": "20260928-mukeqmao",
+    "tanggal": "2026-09-28",
+    "jam": "05:46",
+    "sesi": "Pagi",
+    "judul": "Test",
+    "lokasi": "Bentiring, Muara Bangka Hulu",
+    "keterangan": "Test",
+    "kendala": "Tidak ada",
+    "foto": [
+      "uploads/2026/09/28/20260928-mukeqmao-mukeqmao0.jpg"
+    ],
+    "koordinat": {
+      "lat": -3.782761,
+      "lng": 102.305196,
+      "akurasi": 35
+    },
+    "dicatat": "2026-09-27T22:46:04.721Z",
+    "fotoKecil": {
+      "uploads/2026/09/28/20260928-mukeqmao-mukeqmao0.jpg": "uploads/2026/09/28/20260928-mukeqmao-mukeqmao0-t.jpg"
+    },
+    "fotoDrive": {
+      "uploads/2026/09/28/20260928-mukeqmao-mukeqmao0.jpg": "17VDm_BMRF4MnjSaXwvvhxAcKtKwfn-R2"
+    }
+  },
+  {
     "id": "20260927-mujo9si5",
     "tanggal": "2026-09-25",
     "jam": "10:24",
