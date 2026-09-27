@@ -175,7 +175,9 @@ function renderKpis() {
   </div>`;
   $('kpis').innerHTML = [
     kpi('grid', KERJA.length, 'Kegiatan', !isHariKerja(today) ? `${esc(labelBukanHariKerja(today))} · tidak dihitung` : hariIni ? `<b class="ok">+${hariIni} hari ini</b>` : 'Hari ini belum ada'),
-    kpi('calendar', hari, 'Hari terdokumentasi', kerja ? `${pct}% dari ${kerja} hari kerja` : 'Belum dimulai'),
+    kpi('calendar', hari, 'Hari terdokumentasi', kerja
+      ? `${Math.min(hari, kerja)} dari ${kerja} hari kerja terisi (${pct}%)${hari >= kerja ? ' · lengkap' : ''}`
+      : 'Belum dimulai'),
     kpi('image', foto, 'Foto dokumentasi', foto ? `${sync === foto ? 'Semua' : `${sync} dari ${foto}`} di Google Drive` : 'Belum ada foto'),
     kpi('badge', hadir, 'Hari hadir', sakit || izin ? `Sakit ${sakit} · Izin ${izin}` : 'Tanpa sakit/izin')
   ].join('');
