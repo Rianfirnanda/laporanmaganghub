@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://generativelanguage.googleapis.com https://api.groq.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=32"></script>
+  <script src="assets/theme.js?v=33"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=32">
+  <link rel="stylesheet" href="assets/style.css?v=33">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -599,6 +599,19 @@
             </div>
             <form id="formScript" class="form card-body" autocomplete="off">
               <p class="note">Disarankan. Sebuah skrip kecil di akun Google Anda menerima foto dari panel dan menyimpannya ke Drive, jadi <b>tidak perlu login Google</b> setiap mengunggah. Skrip dilindungi kunci rahasia yang dibuat panel.</p>
+              <div class="pair-box" id="pairRecv" hidden>
+                <p><b>Skrip sudah terpasang, tapi kuncinya belum ada di perangkat ini.</b> Di perangkat yang sudah tersambung (misalnya laptop), buka kartu ini lalu ketuk <b>Pasang di perangkat lain</b>. Ketik kode yang muncul di sini.</p>
+                <div class="row row-2">
+                  <label class="field"><span>Kode pasangan</span><input id="pairInput" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="XXXXX-XXXXX" maxlength="13"></label>
+                  <label class="field"><span>Kata sandi panel</span><input id="pairPass" type="password" autocomplete="current-password"></label>
+                </div>
+                <div class="actions"><button type="button" class="btn btn-primary btn-sm" id="btnPairUse">Pasang</button><span class="progress-msg" id="pairMsg"></span></div>
+              </div>
+              <div class="pair-box" id="pairSend" hidden>
+                <p><b>Pakai juga di HP atau laptop lain?</b> Buat kode pasangan, lalu ketik kodenya di kartu ini pada perangkat lain. Kode berlaku 15 menit dan hanya sekali pakai.</p>
+                <div class="actions"><button type="button" class="btn btn-light btn-sm" id="btnPairMake">Pasang di perangkat lain</button></div>
+                <div class="pair-code" id="pairCode" hidden></div>
+              </div>
               <ol class="steps-setup">
                 <li>Ketuk <b>Salin kode skrip</b> (kunci rahasia sudah terisi di dalamnya).</li>
                 <li>Buka <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> → proyek baru → hapus isi <i>Code.gs</i> → tempel kode.</li>
@@ -807,10 +820,10 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=32"></script>
-  <script src="assets/ai.js?v=32"></script>
-  <script src="assets/admin.js?v=32"></script>
-  <script src="assets/notifikasi.js?v=32"></script>
-  <script src="assets/jaringan.js?v=32"></script>
+  <script src="assets/common.js?v=33"></script>
+  <script src="assets/ai.js?v=33"></script>
+  <script src="assets/admin.js?v=33"></script>
+  <script src="assets/notifikasi.js?v=33"></script>
+  <script src="assets/jaringan.js?v=33"></script>
 </body>
 </html>

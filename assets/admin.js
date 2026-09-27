@@ -1963,6 +1963,9 @@ async function skrip(aksi, data = {}, { url = scriptUrl(), key = SCRIPT_KEY } = 
   try { out = await res.json(); } catch {
     throw new Error(`Apps Script membalas ${res.status} tanpa data. Pastikan deployment "Aplikasi web" dengan akses "Siapa saja".`);
   }
+  if (out && out.error === 'Kunci salah.') {
+    throw new Error('Kunci di perangkat ini tidak cocok dengan skrip. Sambungkan dengan kode pasangan dari perangkat yang sudah tersambung.');
+  }
   if (!out || !out.ok) throw new Error(`Apps Script: ${(out && out.error) || 'gagal'}`);
   return out;
 }
@@ -1983,10 +1986,16 @@ function scriptCodeFor(key) {
 async function renderScript() {
   const url = scriptUrl();
   $('scriptStatus').textContent = scriptMode() ? `Aktif${scriptEmail ? ` · ${scriptEmail}` : ''} · tanpa login`
-    : url ? 'Kunci belum ada di perangkat ini' : 'Belum diatur';
+    : url ? 'Belum tersambung di perangkat ini · pakai kode pasangan' : 'Belum diatur';
+  $('pairSend').hidden = !scriptMode();
+  $('pairRecv').hidden = !(url && !SCRIPT_KEY);
+  if (!scriptMode()) $('pairCode').hidden = true;
   $('btnScriptForget').hidden = !url;
   if (document.activeElement !== $('dScriptUrl')) $('dScriptUrl').value = url;
-  if (document.activeElement !== $('dScriptKey')) $('dScriptKey').value = SCRIPT_KEY || pendingScriptKey();
+  // Skrip sudah terpasang tapi kunci belum ada di sini: jangan isi kunci acak
+  // baru (akan ditolak skrip); kunci didapat lewat kode pasangan.
+  if (document.activeElement !== $('dScriptKey')) $('dScriptKey').value = SCRIPT_KEY || (url ? '' : pendingScriptKey());
+  $('dScriptKey').placeholder = url && !SCRIPT_KEY ? 'Pakai kode pasangan di atas' : '';
   $('dScriptPass').value = '';
   try {
     await loadScriptTemplate();
@@ -2019,13 +2028,105 @@ $('btnScriptCheck').addEventListener('click', () => {
 $('btnScriptCopy').addEventListener('click', async () => {
   try {
     await loadScriptTemplate();
-    const key = $('dScriptKey').value.trim() || pendingScriptKey();
+    let key = $('dScriptKey').value.trim();
+    if (!key && scriptUrl()) {
+      toast('Skrip sudah terpasang. Sambungkan perangkat ini dengan kode pasangan. Untuk memasang skrip baru, ketuk "Buat kunci baru" dulu.', true);
+      return;
+    }
+    key = key || pendingScriptKey();
     await navigator.clipboard.writeText(scriptCodeFor(key));
     toast('Kode skrip tersalin (kunci rahasia sudah di dalamnya). Tempel di script.google.com.');
   } catch {
     $('scriptCode').closest('details').open = true;
     toast('Salin manual: buka "Lihat kode skrip", tekan lama lalu Pilih semua → Salin.', true);
   }
+});
+
+// ---------- Kode pasangan: memindahkan kunci skrip ke perangkat lain ----------
+// Kunci dienkripsi (PBKDF2 + AES-GCM) dengan kode acak 10 karakter (±50 bit),
+// disimpan sementara di config.json, berlaku 15 menit dan dihapus setelah dipakai.
+const PAIR_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const PAIR_MS = 15 * 60000;
+const PAIR_RE = new RegExp(`^[${PAIR_ABC}]{10}$`);
+
+function kodePasangan() {
+  let out = '';
+  while (out.length < 10) {
+    for (const b of crypto.getRandomValues(new Uint8Array(16))) {
+      if (b < 248 && out.length < 10) out += PAIR_ABC[b % 31];   // 248 = 31 × 8, tanpa bias
+    }
+  }
+  return out;
+}
+
+const normKode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+async function simpanPasang(pasang, pesan) {
+  let latest;
+  await commit(pesan, async base => {
+    latest = await readRepoJSON(CONFIG_PATH, base, {});
+    const skripCfg = { ...((latest.drive && latest.drive.skrip) || {}) };
+    if (pasang) skripCfg.pasang = pasang; else delete skripCfg.pasang;
+    latest.drive = { ...(latest.drive || {}), skrip: skripCfg };
+    return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
+  });
+  CFG = { ...CFG, drive: latest.drive };
+}
+
+$('btnPairMake').addEventListener('click', () => {
+  if (!scriptMode()) return;
+  withBusy($('btnPairMake'), async () => {
+    const kode = kodePasangan();
+    const exp = serverNow().getTime() + PAIR_MS;
+    await simpanPasang({ ...(await encryptToken(SCRIPT_KEY, kode)), exp }, 'Kode pasangan Apps Script (berlaku 15 menit)');
+    const jam = formatWaktuWib(new Date(exp), false).replace(/\.\d{2} /, ' ');
+    $('pairCode').innerHTML = `<strong>${kode.slice(0, 5)}-${kode.slice(5)}</strong><small>Ketik kode ini di perangkat lain sebelum ${esc(jam)}.</small>`;
+    $('pairCode').hidden = false;
+    toast('Kode pasangan dibuat. Ketik di perangkat lain: Keamanan → Google Drive tanpa login.');
+  });
+});
+
+async function pakaiKodePasangan() {
+  const kode = normKode($('pairInput').value);
+  const pass = $('pairPass').value;
+  if (!PAIR_RE.test(kode)) return toast('Kode pasangan harus 10 huruf/angka, misalnya K7QM4-XPA9D.', true);
+  const stored = readStore();
+  if (!stored) return;
+  await withBusy($('btnPairUse'), async () => {
+    await decryptToken(stored.enc, pass);   // memastikan kata sandi panel benar
+    msg('pairMsg', 'Mengambil kode…');
+    const cfg = await readRepoJSON(CONFIG_PATH, S.branch, {});
+    const skripCfg = (cfg.drive && cfg.drive.skrip) || {};
+    const p = skripCfg.pasang;
+    if (!p || !p.data) throw new Error('Belum ada kode pasangan aktif. Buat dulu di perangkat yang sudah tersambung.');
+    if (!(p.exp > serverNow().getTime())) throw new Error('Kode pasangan sudah kedaluwarsa. Buat kode baru di perangkat pertama.');
+    let key;
+    try { key = await decryptToken(p, kode); } catch { throw new Error('Kode pasangan salah. Periksa lagi hurufnya.'); }
+    msg('pairMsg', 'Menguji skrip…');
+    const ping = await skrip('ping', {}, { url: skripCfg.url, key });
+    scriptEmail = ping.email || '';
+    SCRIPT_KEY = key;
+    writeStore({ ...readStore(), scriptEnc: await encryptToken(key, pass) });
+    saveSession();
+    driveCfg = { ...driveCfg, enabled: true };
+    try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCfg)); localStorage.removeItem(SCRIPT_PENDING); } catch { /* abaikan */ }
+    CFG = { ...CFG, drive: cfg.drive };
+    await simpanPasang(null, 'Kode pasangan Apps Script dipakai').catch(() => {});
+    $('pairInput').value = '';
+    $('pairPass').value = '';
+    renderScript();
+    renderDrive();
+    toast(`✅ Perangkat ini tersambung ke Google Drive${scriptEmail ? ` (${scriptEmail})` : ''}.`);
+  }, 'pairMsg');
+}
+
+$('btnPairUse').addEventListener('click', pakaiKodePasangan);
+['pairInput', 'pairPass'].forEach(id => $(id).addEventListener('keydown', ev => {
+  if (ev.key === 'Enter') { ev.preventDefault(); pakaiKodePasangan(); }
+}));
+$('pairInput').addEventListener('input', () => {
+  const k = normKode($('pairInput').value).slice(0, 10);
+  $('pairInput').value = k.length > 5 ? `${k.slice(0, 5)}-${k.slice(5)}` : k;
 });
 
 $('btnScriptNewKey').addEventListener('click', () => {
