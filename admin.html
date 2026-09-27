@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <script src="assets/theme.js?v=12"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -11,9 +12,9 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Crect x='20' y='28' width='24' height='20' rx='3' fill='white'/%3E%3Cpath d='M25 28v-5a7 7 0 0 1 14 0v5' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=10">
+  <link rel="stylesheet" href="assets/style.css?v=12">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -28,6 +29,9 @@
         <button class="btn btn-light btn-sm" type="button" id="btnLock" hidden>
           <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><span class="hide-xs">Kunci</span>
         </button>
+        <button class="icon-btn theme-btn" type="button" data-theme-toggle aria-label="Ganti mode tampilan">
+          <svg class="ic i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ic i-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
         <a href="./" class="btn btn-outline btn-sm">
           <span class="hide-xs">Lihat website</span><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
         </a>
@@ -36,7 +40,7 @@
   </nav>
 
   <header class="hero hero-sm">
-    <div class="container hero-inner">
+    <div class="container"><div class="hero-inner">
       <div class="profile">
         <div class="avatar" id="heroAvatar"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></div>
         <div class="profile-text">
@@ -47,24 +51,24 @@
           </div>
         </div>
       </div>
-    </div>
+    </div></div>
   </header>
 
   <div class="tabbar" id="tabbar" hidden>
-    <div class="container tabbar-inner" role="tablist">
+    <div class="container"><div class="tabbar-inner" role="tablist">
       <button type="button" role="tab" class="tabbar-item active" data-tab="kegiatan">
-        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Kegiatan
+        <svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> <span class="lbl-long">Kegiatan</span><span class="lbl-short">Kegiatan</span>
       </button>
       <button type="button" role="tab" class="tabbar-item" data-tab="harian">
-        <svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> Laporan Harian
+        <svg class="ic" aria-hidden="true"><use href="#i-file"/></svg> <span class="lbl-long">Laporan Harian</span><span class="lbl-short">Laporan</span>
       </button>
       <button type="button" role="tab" class="tabbar-item" data-tab="profil">
-        <svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Profil &amp; Tampilan
+        <svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> <span class="lbl-long">Profil &amp; Tampilan</span><span class="lbl-short">Profil</span>
       </button>
       <button type="button" role="tab" class="tabbar-item" data-tab="keamanan">
-        <svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg> Keamanan
+        <svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg> <span class="lbl-long">Keamanan</span><span class="lbl-short">Keamanan</span>
       </button>
-    </div>
+    </div></div>
   </div>
 
   <main class="container page">
@@ -107,6 +111,7 @@
         <p class="muted" id="unlockRepo"></p>
         <form id="formUnlock" class="form" autocomplete="off">
           <label class="field"><span>Kata sandi panel</span><input id="uPass" type="password" autocomplete="current-password" required></label>
+          <label class="check-row"><input type="checkbox" id="uRemember"> Tetap masuk di perangkat ini (30 hari)</label>
           <button class="btn btn-primary btn-block" type="submit" id="btnUnlock">Buka panel</button>
           <button class="btn btn-link" type="button" id="btnForgot">Lupa kata sandi?</button>
         </form>
@@ -154,6 +159,7 @@
             <div class="actions">
               <button class="btn btn-primary" type="submit" id="btnSave">Simpan kegiatan</button>
               <span class="progress-msg" id="saveMsg"></span>
+              <span class="progress-msg" id="autoAiMsg"></span>
             </div>
           </form>
         </section>
@@ -229,6 +235,7 @@
               <div class="actions">
                 <button class="btn btn-primary" type="submit">Simpan kunci</button>
                 <button class="btn btn-danger" type="button" id="btnAiForget" hidden>Hapus kunci</button>
+                <button class="btn btn-light" type="button" id="btnSummary"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Perbarui ringkasan dasbor</button>
               </div>
               <details class="help">
                 <summary>Cara mendapatkan kunci API Gemini (gratis)</summary>
@@ -483,7 +490,7 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=10"></script>
-  <script src="assets/admin.js?v=10"></script>
+  <script src="assets/common.js?v=12"></script>
+  <script src="assets/admin.js?v=12"></script>
 </body>
 </html>
