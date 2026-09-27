@@ -288,6 +288,7 @@ $('formUnlock').addEventListener('submit', async ev => {
       throw e;
     }
     failCount = 0;
+    AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
     $('uPass').value = '';
     await enterApp();
   });
@@ -305,11 +306,17 @@ async function enterApp() {
   renderDrive();
   if (driveReady()) loadGis().catch(() => {});
   resetForm();
-  await Promise.all([loadEntries(), loadConfig()]);
+  renderAi();
+  refreshAiModels();
+  if (!$('hTanggal').value) $('hTanggal').value = todayStr();
+  await Promise.all([loadEntries(), loadConfig(), loadHarian()]);
+  renderHarianForm();
 }
 
 function lock(reason) {
   TOKEN = '';
+  AI_KEY = '';
+  harian = {};
   driveToken = null;
   entries = [];
   CFG = null;
@@ -543,6 +550,7 @@ async function deleteEntry(id) {
 }
 
 function renderList() {
+  renderHarianEntries();
   const q = $('listCari').value.trim().toLowerCase();
   const list = sortEntries(entries).filter(e => !q || `${e.judul} ${e.keterangan} ${e.tanggal}`.toLowerCase().includes(q));
   const hari = new Set(entries.map(e => e.tanggal)).size;
@@ -800,7 +808,9 @@ $('formPass').addEventListener('submit', async ev => {
   if ($('pNew').value !== $('pNew2').value) return toast('Ulangan kata sandi baru tidak sama.', true);
   await withBusy(ev.submitter, async () => {
     const token = await decryptToken(stored.enc, $('pOld').value);
-    writeStore({ ...stored, enc: await encryptToken(token, $('pNew').value) });
+    const next = { ...stored, enc: await encryptToken(token, $('pNew').value) };
+    if (stored.aiEnc) next.aiEnc = await encryptToken(await decryptToken(stored.aiEnc, $('pOld').value), $('pNew').value);
+    writeStore(next);
     $('formPass').reset();
     toast('Kata sandi panel diganti.');
   });
@@ -867,6 +877,332 @@ function setDeployStatus(state) {
   if (state !== 'pending') { clearInterval(deployTick); deployTick = null; }
   if (state === 'done') deployHideTimer = setTimeout(() => { el.hidden = true; }, 15000);
 }
+
+// ================= Laporan harian (isian daftar hadir monev) =================
+// Setiap sore monev MagangHub meminta tiga isian: ringkasan kegiatan,
+// pembelajaran, dan kendala. Gemini menyusunnya dari catatan kegiatan hari
+// itu; hasilnya bisa diedit, disalin, dan disimpan ke data/harian.json.
+const HARIAN_PATH = 'data/harian.json';
+const STATUS_HADIR = ['Hadir', 'Sakit', 'Izin'];
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
+let harian = {};
+let AI_KEY = '';   // hanya di memori; tersimpan terenkripsi sebagai stored.aiEnc
+let aiModels = [];  // model Gemini yang tersedia untuk kunci ini
+
+const AI_SYSTEM = `Kamu membantu seorang peserta magang menulis laporan harian untuk daftar hadir di monev MagangHub Kemnaker. Laporan diisi setiap sore dan terdiri dari tiga bagian: ringkasan kegiatan, pembelajaran yang didapat, dan kendala yang dihadapi.
+
+Tulis seolah-olah peserta sendiri yang menulis: bahasa Indonesia sehari-hari yang sopan, sudut pandang orang pertama ("saya"), kalimat yang mengalir, tanpa poin-poin, tanpa judul, tanpa emoji, dan tanpa kalimat pembuka seperti "Berikut" atau "Pada hari ini saya telah melaksanakan". Variasikan susunan kalimat dan hindari frasa klise seperti "sangat bermanfaat", "menambah wawasan", atau "secara keseluruhan".
+
+- ringkasan: 2-4 kalimat tentang apa saja yang dikerjakan dari pagi sampai sore, mengikuti urutan catatan. Sebut hal konkret (nama pekerjaan, jumlah, aplikasi, tempat) bila ada di catatan.
+- pembelajaran: 1-3 kalimat tentang hal yang dipelajari atau keterampilan yang terasah dari kegiatan itu, masuk akal berdasarkan catatan, bukan pujian umum.
+- kendala: 1-2 kalimat tentang kendala yang tersirat di catatan beserta cara mengatasinya bila disebut. Jika catatan tidak menyebut kendala, tulis singkat dan jujur bahwa tidak ada kendala berarti; jangan mengarang masalah.
+
+Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan, lalu isi pembelajaran dan kendala dengan "-" bila tidak relevan.`;
+
+const HARIAN_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    ringkasan: { type: 'STRING' },
+    pembelajaran: { type: 'STRING' },
+    kendala: { type: 'STRING' }
+  },
+  required: ['ringkasan', 'pembelajaran', 'kendala'],
+  propertyOrdering: ['ringkasan', 'pembelajaran', 'kendala']
+};
+
+async function loadHarian() {
+  try {
+    const data = await readRepoJSON(HARIAN_PATH, S.branch, {});
+    harian = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  } catch (e) {
+    harian = {};
+    toast(`Gagal memuat laporan harian: ${e.message}`, true);
+  }
+  renderHarianList();
+}
+
+function dayEntries(date) {
+  return entries.filter(e => e.tanggal === date).sort((a, b) => (a.jam || '').localeCompare(b.jam || ''));
+}
+
+function renderHarianForm() {
+  const date = $('hTanggal').value;
+  const rec = harian[date] || {};
+  $('hStatus').value = STATUS_HADIR.includes(rec.status) ? rec.status : 'Hadir';
+  $('hKet').value = rec.keterangan || '';
+  $('hRingkasan').value = rec.ringkasan || '';
+  $('hPembelajaran').value = rec.pembelajaran || '';
+  $('hKendala').value = rec.kendala || '';
+  toggleKet();
+  renderHarianEntries();
+  document.querySelectorAll('#harianList [data-date]').forEach(b => b.classList.toggle('editing', b.dataset.date === date));
+}
+
+// Hanya daftar kegiatan; isian laporan yang belum disimpan tidak disentuh.
+function renderHarianEntries() {
+  const items = dayEntries($('hTanggal').value);
+  $('hEntries').innerHTML = items.length
+    ? items.map(e => `<li><b>${esc(e.jam || '')}</b> ${esc(e.judul)}</li>`).join('')
+    : '<li class="muted">Belum ada kegiatan tercatat pada tanggal ini.</li>';
+}
+
+function toggleKet() {
+  $('hKetWrap').hidden = $('hStatus').value === 'Hadir';
+}
+
+function renderHarianList() {
+  const dates = Object.keys(harian).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  $('harianCount').textContent = `${dates.length} hari tersimpan`;
+  $('harianList').innerHTML = dates.length ? dates.map(d => {
+    const r = harian[d];
+    const st = STATUS_HADIR.includes(r.status) ? r.status : 'Hadir';
+    return `<button type="button" class="list-item list-btn${d === $('hTanggal').value ? ' editing' : ''}" data-date="${d}">
+      <div class="list-info"><strong>${esc(formatTanggal(d))}</strong>
+      <span>${esc((r.ringkasan || r.keterangan || '').slice(0, 70))}${(r.ringkasan || '').length > 70 ? '…' : ''}</span></div>
+      ${st !== 'Hadir' ? `<span class="pill pill-${st.toLowerCase()}">${st}</span>` : ''}
+    </button>`;
+  }).join('') : '<p class="empty">Belum ada laporan harian.</p>';
+}
+
+$('hTanggal').addEventListener('change', renderHarianForm);
+$('hStatus').addEventListener('change', toggleKet);
+$('harianList').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-date]');
+  if (!b) return;
+  $('hTanggal').value = b.dataset.date;
+  renderHarianForm();
+  $('formHarian').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-copy]');
+  if (!b || !$(b.dataset.copy)) return;
+  try {
+    await navigator.clipboard.writeText($(b.dataset.copy).value);
+    const old = b.textContent;
+    b.textContent = 'Tersalin ✓';
+    setTimeout(() => { b.textContent = old; }, 1500);
+  } catch {
+    $(b.dataset.copy).select();
+    toast('Tekan Ctrl+C untuk menyalin.', true);
+  }
+});
+
+function harianPrompt(date) {
+  const c = CFG || {};
+  const items = dayEntries(date);
+  const status = $('hStatus').value;
+  const ket = $('hKet').value.trim();
+  const lines = items.map(e => {
+    const parts = [`- ${e.jam || '??:??'} (${e.sesi || sesiDariJam(e.jam)}): ${e.judul}`];
+    if (e.lokasi) parts.push(`Lokasi: ${e.lokasi}.`);
+    if (e.keterangan) parts.push(`Catatan: ${e.keterangan.replace(/\s+/g, ' ')}`);
+    return parts.join(' ');
+  });
+  const prev = Object.keys(harian).filter(d => d < date && harian[d].ringkasan).sort().pop();
+  return [
+    `Peserta: ${c.posisi || 'peserta magang'} di ${c.instansi || 'instansi'}.`,
+    `Tanggal: ${formatTanggal(date)}. Status kehadiran: ${status}${ket ? ` (${ket})` : ''}.`,
+    '',
+    lines.length ? `Catatan kegiatan hari ini, urut jam:\n${lines.join('\n')}` : 'Tidak ada catatan kegiatan pada hari ini.',
+    prev ? `\nRingkasan laporan hari sebelumnya, untuk dihindari susunan kalimatnya agar tidak berulang:\n${harian[prev].ringkasan}` : '',
+    '',
+    'Tulis ketiga isian laporan daftar hadir untuk hari ini.'
+  ].join('\n');
+}
+
+// Gemini API dipanggil langsung dari browser dengan kunci milik pengguna.
+async function gemini(path, body) {
+  const res = await fetch(`${GEMINI_API}/${path}`, {
+    method: body ? 'POST' : 'GET',
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
+    headers: { 'x-goog-api-key': AI_KEY, ...(body ? { 'content-type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    let m = res.statusText;
+    let reason = '';
+    try {
+      const err = (await res.json()).error || {};
+      m = err.message || m;
+      reason = JSON.stringify(err.details || '');
+    } catch { /* abaikan */ }
+    if (/API_KEY_INVALID|API key not valid/i.test(`${m} ${reason}`)) m = 'Kunci API Gemini tidak valid.';
+    else if (res.status === 429) m = 'Kuota gratis Gemini sedang habis. Tunggu sebentar (atau sampai besok) lalu coba lagi.';
+    else if (res.status === 403) m = 'Kunci API tidak diizinkan memakai Gemini API. Pastikan kunci dibuat di Google AI Studio.';
+    throw new Error(`Gemini ${res.status}: ${m}`);
+  }
+  return res.json();
+}
+
+// Pilih model "Flash" terbaru yang stabil (keluarga dengan kuota gratis).
+function pickModel(models) {
+  const flash = models.filter(m => /flash/.test(m) && !/lite|image|tts|audio|live|embed|thinking|exp/.test(m));
+  const stable = flash.filter(m => !/preview/.test(m));
+  const ver = m => (m.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1] * 1;
+  const best = list => list.slice().sort((a, b) => ver(b) - ver(a) || a.length - b.length)[0];
+  return best(stable) || best(flash) || GEMINI_FALLBACK_MODEL;
+}
+
+async function loadAiModels() {
+  const data = await gemini('models?pageSize=200');
+  aiModels = (data.models || [])
+    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map(m => m.name.replace(/^models\//, ''))
+    .filter(m => /^gemini-/.test(m));
+  return aiModels;
+}
+
+function currentModel() {
+  const stored = readStore();
+  return (stored && stored.aiModel) || GEMINI_FALLBACK_MODEL;
+}
+
+async function generateHarian(date) {
+  if (!AI_KEY) throw new Error('Kunci API Gemini belum diatur. Isi di kartu "Asisten AI".');
+  if (!dayEntries(date).length && $('hStatus').value === 'Hadir') {
+    throw new Error('Belum ada kegiatan pada tanggal ini. Tambahkan kegiatan dulu atau ubah status kehadiran.');
+  }
+  const data = await gemini(`models/${encodeURIComponent(currentModel())}:generateContent`, {
+    systemInstruction: { parts: [{ text: AI_SYSTEM }] },
+    contents: [{ role: 'user', parts: [{ text: harianPrompt(date) }] }],
+    generationConfig: {
+      temperature: 0.9,
+      maxOutputTokens: 8192,
+      responseMimeType: 'application/json',
+      responseSchema: HARIAN_SCHEMA
+    }
+  });
+  if (data.promptFeedback && data.promptFeedback.blockReason) {
+    throw new Error('Gemini menolak memproses catatan ini. Coba ubah catatan kegiatan.');
+  }
+  const cand = (data.candidates || [])[0];
+  if (!cand) throw new Error('Gemini tidak memberi jawaban. Coba lagi.');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('Jawaban AI terpotong. Coba lagi.');
+  if (cand.finishReason && !['STOP', 'FINISH_REASON_UNSPECIFIED'].includes(cand.finishReason)) {
+    throw new Error(`Gemini berhenti (${cand.finishReason}). Coba ubah catatan kegiatan lalu ulangi.`);
+  }
+  const text = ((cand.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
+  let out;
+  try { out = JSON.parse(text); } catch { throw new Error('Jawaban AI tidak terbaca. Coba lagi.'); }
+  return {
+    ringkasan: String(out.ringkasan || '').trim(),
+    pembelajaran: String(out.pembelajaran || '').trim(),
+    kendala: String(out.kendala || '').trim()
+  };
+}
+
+$('btnAi').addEventListener('click', async ev => {
+  const date = $('hTanggal').value;
+  const hasText = ['hRingkasan', 'hPembelajaran', 'hKendala'].some(id => $(id).value.trim());
+  if (hasText && !confirm('Isian yang ada akan diganti dengan tulisan baru dari AI. Lanjutkan?')) return;
+  await withBusy(ev.currentTarget, async () => {
+    msg('aiMsg', 'Gemini sedang menulis laporan…');
+    const out = await generateHarian(date);
+    $('hRingkasan').value = out.ringkasan;
+    $('hPembelajaran').value = out.pembelajaran;
+    $('hKendala').value = out.kendala;
+    toast('Laporan selesai ditulis. Periksa dulu, lalu klik Simpan laporan.');
+  }, 'aiMsg');
+});
+
+$('formHarian').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const date = $('hTanggal').value;
+  const rec = {
+    status: $('hStatus').value,
+    keterangan: $('hStatus').value === 'Hadir' ? '' : $('hKet').value.trim(),
+    ringkasan: $('hRingkasan').value.trim(),
+    pembelajaran: $('hPembelajaran').value.trim(),
+    kendala: $('hKendala').value.trim(),
+    diperbarui: new Date().toISOString()
+  };
+  if (!rec.keterangan) delete rec.keterangan;
+  const empty = rec.status === 'Hadir' && !rec.ringkasan && !rec.pembelajaran && !rec.kendala;
+  await withBusy($('btnSaveHarian'), async () => {
+    msg('harianMsg', 'Menyimpan ke GitHub…');
+    let latest;
+    await commit(`Laporan harian ${date}${rec.status !== 'Hadir' ? ` (${rec.status})` : ''}`, async base => {
+      latest = await readRepoJSON(HARIAN_PATH, base, {});
+      if (!latest || typeof latest !== 'object' || Array.isArray(latest)) latest = {};
+      if (empty) delete latest[date]; else latest[date] = rec;
+      const sorted = Object.fromEntries(Object.entries(latest).sort(([a], [b]) => b.localeCompare(a)));
+      return [{ path: HARIAN_PATH, content: JSON.stringify(sorted, null, 2) + '\n' }];
+    });
+    harian = latest;
+    renderHarianList();
+    renderHarianForm();
+    toast(empty ? 'Laporan harian dihapus.' : 'Laporan harian tersimpan. Menunggu website diperbarui…');
+  }, 'harianMsg');
+});
+
+// ---------- Pengaturan kunci API Gemini ----------
+function renderAi() {
+  const stored = readStore();
+  const has = Boolean(stored && stored.aiEnc);
+  $('aiStatus').textContent = AI_KEY ? `Aktif · ${currentModel()}` : has ? 'Tersimpan (buka ulang panel untuk memakai)' : 'Belum diatur';
+  $('btnAiForget').hidden = !has;
+  $('aiModelWrap').hidden = !AI_KEY;
+  const list = aiModels.length ? aiModels : [currentModel()];
+  if (!list.includes(currentModel())) list.unshift(currentModel());
+  $('aiModel').innerHTML = list.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  $('aiModel').value = currentModel();
+  $('aiKey').value = '';
+  $('aiPass').value = '';
+}
+
+// Setelah panel terbuka: ambil daftar model; bila model tersimpan tidak ada lagi, pilih ulang.
+async function refreshAiModels() {
+  if (!AI_KEY) return;
+  try {
+    const models = await loadAiModels();
+    const stored = readStore();
+    if (stored && (!stored.aiModel || !models.includes(stored.aiModel))) writeStore({ ...stored, aiModel: pickModel(models) });
+  } catch { /* kunci salah/offline: tetap pakai model tersimpan */ }
+  renderAi();
+}
+
+$('aiModel').addEventListener('change', () => {
+  const stored = readStore();
+  if (stored) writeStore({ ...stored, aiModel: $('aiModel').value });
+  renderAi();
+  toast(`Model AI diganti ke ${$('aiModel').value}.`);
+});
+
+$('formAi').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const key = $('aiKey').value.trim();
+  if (!/^AIza[\w-]{30,}$/.test(key)) return toast('Kunci API tidak valid. Kunci Gemini diawali "AIza".', true);
+  const stored = readStore();
+  if (!stored) return;
+  await withBusy(ev.submitter, async () => {
+    await decryptToken(stored.enc, $('aiPass').value);   // memastikan kata sandi panel benar
+    const prev = AI_KEY;
+    AI_KEY = key;
+    let models;
+    try {
+      models = await loadAiModels();                      // sekaligus menguji kunci
+    } catch (e) {
+      AI_KEY = prev;
+      throw e;
+    }
+    writeStore({ ...stored, aiEnc: await encryptToken(key, $('aiPass').value), aiModel: pickModel(models) });
+    renderAi();
+    toast(`Kunci Gemini tersimpan terenkripsi. Model: ${currentModel()}.`);
+  });
+});
+
+$('btnAiForget').addEventListener('click', () => {
+  if (!confirm('Hapus kunci API Gemini dari perangkat ini?')) return;
+  const stored = readStore();
+  if (stored) { delete stored.aiEnc; delete stored.aiModel; writeStore(stored); }
+  AI_KEY = '';
+  aiModels = [];
+  renderAi();
+  toast('Kunci API Gemini dihapus dari perangkat ini.');
+});
 
 // ================= Google Drive (salinan foto) =================
 // Login lewat Google Identity Services (tanpa server). Izin drive.file hanya
