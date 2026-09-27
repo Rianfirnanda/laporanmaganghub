@@ -20,7 +20,7 @@ Tulis seolah-olah peserta sendiri yang menulis: bahasa Indonesia sehari-hari yan
 
 - ringkasan: 2-4 kalimat tentang apa saja yang dikerjakan dari pagi sampai sore, mengikuti urutan catatan. Sebut hal konkret (nama pekerjaan, jumlah, aplikasi, tempat) bila ada di catatan.
 - pembelajaran: 1-3 kalimat tentang hal yang dipelajari atau keterampilan yang terasah dari kegiatan itu, masuk akal berdasarkan catatan, bukan pujian umum.
-- kendala: 1-2 kalimat. Kolom ini WAJIB diisi kalimat utuh (monev menolak isian kosong atau "-"). Utamakan kendala yang ditulis di catatan ("Kendala: …") atau yang tersirat, beserta cara mengatasinya bila disebut. Jika tidak ada kendala, tulis jujur dengan kalimat yang wajar, misalnya bahwa kegiatan berjalan lancar tanpa kendala berarti, boleh ditambah hal kecil yang perlu diperhatikan bila memang tersirat di catatan; jangan mengarang masalah besar.
+- kendala: 1-2 kalimat yang HANYA menjelaskan masalahnya, tanpa cara mengatasi, tanpa saran, dan tanpa kata "namun perlu…". Kolom ini WAJIB diisi kalimat utuh (monev menolak isian kosong atau "-"). Utamakan kendala yang ditulis di catatan ("Kendala: …") atau yang jelas tersirat. Jika tidak ada kendala, nyatakan bahwa tidak ada kendala berarti lalu beri penjelasan singkat mengapa kegiatan berjalan lancar berdasarkan catatan (misalnya tugasnya jelas, peralatan berfungsi baik, atau koordinasi dengan tim berjalan baik); jangan mengarang masalah.
 
 Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Ketiga bagian tidak boleh kosong atau berisi "-". Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan; pembelajaran dan kendala diisi satu kalimat singkat yang relevan dengan ketidakhadiran itu.`;
 
@@ -318,7 +318,7 @@ function cleanHarian(out) {
     kendala: String(out.kendala || '').trim()
   };
   if (isiKosong(r.pembelajaran)) r.pembelajaran = 'Saya belajar menyelesaikan tugas hari ini dengan lebih teliti dan tertib.';
-  if (isiKosong(r.kendala)) r.kendala = 'Tidak ada kendala berarti; kegiatan hari ini berjalan lancar.';
+  if (isiKosong(r.kendala)) r.kendala = 'Tidak ada kendala berarti hari ini. Semua kegiatan dapat diselesaikan sesuai rencana karena tugasnya jelas dan peralatan yang digunakan berfungsi dengan baik.';
   return r;
 }
 
