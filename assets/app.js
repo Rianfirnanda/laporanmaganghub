@@ -248,7 +248,8 @@ function renderFooter() {
 function startFooterClock() {
   const tick = () => {
     $('footerTime').textContent = formatWaktuWib(serverNow(), false);
-    $('footerDate').textContent = `${formatTanggal(wibParts().tanggal)} · ${serverSynced ? 'waktu server' : 'jam perangkat'}`;
+    $('footerDate').textContent = formatTanggal(wibParts().tanggal);
+    $('footerSrc').textContent = serverSynced ? 'waktu server' : 'jam perangkat';
   };
   tick();
   setInterval(tick, 1000);
