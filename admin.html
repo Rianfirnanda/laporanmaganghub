@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel Admin · Laporan Magang</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="admin">
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <strong>Panel Admin · Laporan Magang</strong>
+      <a href="./" class="btn btn-ghost btn-sm">← Lihat website</a>
+    </div>
+  </header>
+
+  <main class="container admin-grid">
+    <!-- Pengaturan koneksi GitHub -->
+    <section class="card" id="cardSettings">
+      <div class="card-head">
+        <h2>Koneksi GitHub</h2>
+        <span class="status" id="connStatus">Belum terhubung</span>
+      </div>
+      <form id="formSettings" class="form">
+        <div class="row">
+          <label class="field"><span>Username / owner</span><input id="sOwner" required></label>
+          <label class="field"><span>Nama repository</span><input id="sRepo" required></label>
+          <label class="field"><span>Branch</span><input id="sBranch" value="main" required></label>
+        </div>
+        <label class="field">
+          <span>Token GitHub (fine-grained, izin <em>Contents: Read and write</em>)</span>
+          <input id="sToken" type="password" autocomplete="off" placeholder="github_pat_…" required>
+        </label>
+        <p class="hint">Token hanya disimpan di browser ini (localStorage) dan dikirim langsung ke api.github.com. Jangan login di komputer umum.</p>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Simpan &amp; hubungkan</button>
+          <button class="btn btn-ghost" type="button" id="btnLogout">Hapus token</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Form tambah / edit kegiatan -->
+    <section class="card" id="cardForm">
+      <div class="card-head">
+        <h2 id="formTitle">Tambah kegiatan</h2>
+        <button class="btn btn-ghost btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
+      </div>
+      <form id="formEntry" class="form">
+        <div class="row">
+          <label class="field"><span>Tanggal</span><input type="date" id="fTanggal" required></label>
+          <label class="field"><span>Jam</span><input type="time" id="fJam" required></label>
+          <label class="field"><span>Sesi</span>
+            <select id="fSesi"><option>Pagi</option><option>Siang</option><option>Sore</option></select>
+          </label>
+        </div>
+        <label class="field"><span>Judul kegiatan</span>
+          <input id="fJudul" required maxlength="140" placeholder="Contoh: Entri data Susenas di aplikasi">
+        </label>
+        <label class="field"><span>Lokasi (opsional)</span>
+          <input id="fLokasi" maxlength="120" placeholder="Contoh: Ruang IPDS, Kantor BPS Benteng">
+        </label>
+        <label class="field"><span>Keterangan</span>
+          <textarea id="fKet" rows="4" placeholder="Jelaskan apa yang dikerjakan, hasilnya, dan siapa yang terlibat."></textarea>
+        </label>
+        <div class="field">
+          <span>Foto dokumentasi</span>
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="fFoto" accept="image/*" multiple>
+            <strong>Pilih atau seret foto ke sini</strong>
+            <small>Foto otomatis diperkecil (maks. 1600px) sebelum diunggah.</small>
+          </label>
+          <div class="previews" id="previews"></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit" id="btnSave">Simpan kegiatan</button>
+          <span class="progress-msg" id="saveMsg"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- Daftar kegiatan -->
+    <section class="card wide">
+      <div class="card-head">
+        <h2>Daftar kegiatan</h2>
+        <input type="search" id="listCari" placeholder="Cari…" class="input-sm">
+      </div>
+      <div id="entryList"><p class="empty">Hubungkan GitHub untuk memuat data.</p></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="assets/common.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>
