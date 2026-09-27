@@ -20,9 +20,9 @@ Tulis seolah-olah peserta sendiri yang menulis: bahasa Indonesia sehari-hari yan
 
 - ringkasan: 2-4 kalimat tentang apa saja yang dikerjakan dari pagi sampai sore, mengikuti urutan catatan. Sebut hal konkret (nama pekerjaan, jumlah, aplikasi, tempat) bila ada di catatan.
 - pembelajaran: 1-3 kalimat tentang hal yang dipelajari atau keterampilan yang terasah dari kegiatan itu, masuk akal berdasarkan catatan, bukan pujian umum.
-- kendala: 1-2 kalimat tentang kendala yang tersirat di catatan beserta cara mengatasinya bila disebut. Jika catatan tidak menyebut kendala, tulis singkat dan jujur bahwa tidak ada kendala berarti; jangan mengarang masalah.
+- kendala: 1-2 kalimat. Kolom ini WAJIB diisi kalimat utuh (monev menolak isian kosong atau "-"). Utamakan kendala yang ditulis di catatan ("Kendala: …") atau yang tersirat, beserta cara mengatasinya bila disebut. Jika tidak ada kendala, tulis jujur dengan kalimat yang wajar, misalnya bahwa kegiatan berjalan lancar tanpa kendala berarti, boleh ditambah hal kecil yang perlu diperhatikan bila memang tersirat di catatan; jangan mengarang masalah besar.
 
-Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan, lalu isi pembelajaran dan kendala dengan "-" bila tidak relevan.`;
+Jangan menambahkan kegiatan, angka, nama orang, atau detail yang tidak ada di catatan. Ketiga bagian tidak boleh kosong atau berisi "-". Jika status kehadiran Sakit atau Izin, ringkasan cukup menjelaskan ketidakhadiran itu secara singkat dan sopan; pembelajaran dan kendala diisi satu kalimat singkat yang relevan dengan ketidakhadiran itu.`;
 
 const HARIAN_SCHEMA = {
   type: 'OBJECT',
@@ -69,6 +69,7 @@ function buildHarianPrompt({ config = {}, entries = [], harian = {}, date, statu
     const parts = [`- ${e.jam || '??:??'} (${e.sesi || aiSesi(e.jam)}): ${e.judul}`];
     if (e.lokasi) parts.push(`Lokasi: ${e.lokasi}.`);
     if (e.keterangan) parts.push(`Catatan: ${String(e.keterangan).replace(/\s+/g, ' ')}`);
+    if (e.kendala) parts.push(`Kendala: ${String(e.kendala).replace(/\s+/g, ' ')}`);
     return parts.join(' ');
   });
   const prev = Object.keys(harian).filter(d => d < date && harian[d] && harian[d].ringkasan).sort().pop();
@@ -127,7 +128,8 @@ function buildSummaryPrompt({ config = {}, entries = [], harian = {} }) {
 // Sidik jari isi kegiatan satu hari. Laporan otomatis ditulis ulang hanya bila
 // sidik jari berubah (kegiatan ditambah/diubah), sama di browser dan robot.
 function sumberHarian(entries, date) {
-  const s = JSON.stringify(aiDayEntries(entries, date).map(e => [e.id, e.jam, e.judul, e.keterangan || '', e.lokasi || '']));
+  // Kendala hanya ikut bila diisi, supaya sidik jari laporan lama tidak berubah.
+  const s = JSON.stringify(aiDayEntries(entries, date).map(e => [e.id, e.jam, e.judul, e.keterangan || '', e.lokasi || '', ...(e.kendala ? [e.kendala] : [])]));
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return (h >>> 0).toString(36);
@@ -139,6 +141,8 @@ function perluLaporanAi(entries, harian, date, libur = []) {
   if (!aiHariKerja(date, libur)) return false;   // monev hanya hari kerja
   if (!aiDayEntries(entries, date).length) return false;
   if (!rec || !(rec.ringkasan || rec.pembelajaran || rec.kendala)) return true;
+  // Laporan AI lama yang kolomnya kosong/"-" ditulis ulang (monev mewajibkan semua terisi).
+  if (rec.auto && rec.status !== 'Sakit' && rec.status !== 'Izin' && [rec.ringkasan, rec.pembelajaran, rec.kendala].some(isiKosong)) return true;
   if (rec.auto === false || ['Sakit', 'Izin'].includes(rec.status)) return false;
   // Laporan lama tanpa sidik jari dibiarkan apa adanya (bisa jadi sudah diperiksa).
   return Boolean(rec.sumber) && rec.sumber !== sumberHarian(entries, date);
@@ -304,12 +308,18 @@ async function aiGenerate({ keys = {}, geminiModel, geminiModels = [], system, p
   throw new Error(`${busy ? 'Semua layanan AI sedang sibuk' : 'AI gagal menulis laporan'}. ${errors.slice(-3).join(' · ')}${keys.groq ? '' : ' Tambahkan kunci Groq (gratis) sebagai cadangan agar lebih jarang gagal.'}`);
 }
 
+const isiKosong = v => /^[\s\-–—.]*$/.test(String(v || ''));
+
+// Jaring pengaman bila model tetap mengisi kosong/"-": monev menolak isian kosong.
 function cleanHarian(out) {
-  return {
+  const r = {
     ringkasan: String(out.ringkasan || '').trim(),
     pembelajaran: String(out.pembelajaran || '').trim(),
     kendala: String(out.kendala || '').trim()
   };
+  if (isiKosong(r.pembelajaran)) r.pembelajaran = 'Saya belajar menyelesaikan tugas hari ini dengan lebih teliti dan tertib.';
+  if (isiKosong(r.kendala)) r.kendala = 'Tidak ada kendala berarti; kegiatan hari ini berjalan lancar.';
+  return r;
 }
 
 function cleanSummary(out) {
