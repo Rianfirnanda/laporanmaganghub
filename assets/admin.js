@@ -461,6 +461,60 @@ function loadImage(file) {
   });
 }
 
+// Foto HP bisa 12–50 MP. createImageBitmap mendekode di luar thread utama dan
+// lebih hemat memori daripada <img>; bila gagal, jatuh ke <img>.
+async function decodeImage(file) {
+  if (typeof createImageBitmap === 'function') {
+    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { /* coba cara lain */ }
+  }
+  return loadImage(file);
+}
+
+function unreadableMessage(file) {
+  if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+    return `Foto ${file.name} berformat HEIC yang belum didukung browser. Di pengaturan kamera, pilih format JPG / "Paling kompatibel".`;
+  }
+  return `Foto ${file.name} tidak bisa dibaca. Mungkin belum selesai diunduh dari Google Foto/cloud atau file rusak. Coba pilih ulang.`;
+}
+
+// Perkecil ke JPEG (maks. 1600 px). Diulang sekali bila HP sedang kehabisan memori.
+async function shrinkPhoto(file, { maxSide = 1600, quality = 0.82 } = {}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let src = null;
+    const canvas = document.createElement('canvas');
+    try {
+      src = await decodeImage(file);
+      const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
+      if (!sw || !sh) throw new Error('kosong');
+      const scale = Math.min(1, maxSide / Math.max(sw, sh));
+      canvas.width = Math.max(1, Math.round(sw * scale));
+      canvas.height = Math.max(1, Math.round(sh * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+      if (!blob) throw new Error('gagal');
+      return blob;
+    } catch {
+      await new Promise(r => setTimeout(r, 400));
+    } finally {
+      if (src && src.close) src.close();
+      canvas.width = canvas.height = 0;   // lepaskan memori canvas segera
+    }
+  }
+  throw new Error(unreadableMessage(file));
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).slice(String(r.result).indexOf(',') + 1));
+    r.onerror = () => reject(new Error('Gagal membaca foto.'));
+    r.readAsDataURL(blob);
+  });
+}
+
 // Kompres ulang lewat canvas: ukuran kecil dan metadata EXIF (termasuk lokasi GPS) ikut terbuang.
 async function imageToBase64(file, { maxSide = 1600, square = false, quality = 0.82, png = false } = {}) {
   const img = await loadImage(file);
@@ -485,7 +539,8 @@ async function imageToBase64(file, { maxSide = 1600, square = false, quality = 0
 
 // ================= Kegiatan =================
 let editingId = null;
-let newPhotos = [];       // { file, url }
+let newPhotos = [];       // { file, url, blob, state: 'proses'|'ok'|'gagal', error, prep }
+let prepQueue = Promise.resolve();   // foto diperkecil satu per satu agar HP tidak kehabisan memori
 let keptPhotos = [];      // foto lama yang dipertahankan saat edit
 let removedPhotos = [];   // foto lama yang dihapus saat edit
 
@@ -499,19 +554,40 @@ async function loadEntries() {
   }
 }
 
+// Setiap foto langsung diperkecil begitu dipilih (bukan saat disimpan), dan
+// pratinjaunya memakai versi kecil itu. Foto yang gagal dibaca ditandai dan
+// dilewati saat menyimpan, tidak membatalkan seluruh kegiatan.
 function addFiles(files) {
   for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    newPhotos.push({ file, url: URL.createObjectURL(file) });
+    if (file.type && !file.type.startsWith('image/')) continue;
+    const item = { file, url: '', blob: null, state: 'proses', error: '' };
+    item.prep = prepQueue = prepQueue.then(async () => {
+      if (!newPhotos.includes(item)) return;          // sudah dibatalkan
+      try {
+        item.blob = await shrinkPhoto(file);
+        item.url = URL.createObjectURL(item.blob);
+        item.state = 'ok';
+      } catch (e) {
+        item.state = 'gagal';
+        item.error = e.message;
+        toast(e.message, true);
+      }
+      renderPreviews();
+    });
+    newPhotos.push(item);
   }
   renderPreviews();
 }
 
 function renderPreviews() {
   const kept = keptPhotos.map((p, i) =>
-    `<div class="preview"><img src="${esc(rawUrl(p))}" alt=""><button type="button" data-kept="${i}" title="Hapus foto">${icon('x')}</button></div>`);
-  const fresh = newPhotos.map((p, i) =>
-    `<div class="preview new"><img src="${esc(p.url)}" alt=""><button type="button" data-new="${i}" title="Batal">${icon('x')}</button></div>`);
+    `<div class="preview"><img src="${esc(rawUrl(p))}" alt="" loading="lazy"><button type="button" data-kept="${i}" title="Hapus foto">${icon('x')}</button></div>`);
+  const fresh = newPhotos.map((p, i) => {
+    const body = p.state === 'ok' ? `<img src="${esc(p.url)}" alt="">`
+      : p.state === 'gagal' ? `<span class="preview-state bad" title="${esc(p.error)}">${icon('alert')}<small>Tidak terbaca</small></span>`
+        : `<span class="preview-state">${icon('loader', 'spin')}<small>Memproses…</small></span>`;
+    return `<div class="preview new${p.state === 'gagal' ? ' failed' : ''}">${body}<button type="button" data-new="${i}" title="Batal">${icon('x')}</button></div>`;
+  });
   $('previews').innerHTML = kept.concat(fresh).join('');
 }
 
@@ -522,7 +598,7 @@ $('previews').addEventListener('click', ev => {
     removedPhotos.push(keptPhotos.splice(Number(b.dataset.kept), 1)[0]);
   } else {
     const [p] = newPhotos.splice(Number(b.dataset.new), 1);
-    URL.revokeObjectURL(p.url);
+    if (p && p.url) URL.revokeObjectURL(p.url);
   }
   renderPreviews();
 });
@@ -535,7 +611,7 @@ dz.addEventListener('drop', ev => addFiles(ev.dataTransfer.files));
 
 function resetForm() {
   editingId = null;
-  newPhotos.forEach(p => URL.revokeObjectURL(p.url));
+  newPhotos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); });
   newPhotos = []; keptPhotos = []; removedPhotos = [];
   $('formEntry').reset();
   timeTouched = false;
@@ -731,13 +807,15 @@ window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; }
 // ================= Kamera =================
 // Cap di bagian bawah foto: waktu server (WIB), nama tempat, dan koordinat GPS.
 async function stampPhoto(file, waktu, pos) {
-  const img = await loadImage(file);
-  const scale = Math.min(1, 2560 / Math.max(img.naturalWidth, img.naturalHeight));
-  const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  const img = await decodeImage(file);
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const scale = Math.min(1, 2560 / Math.max(iw, ih));
+  const w = Math.round(iw * scale), h = Math.round(ih * scale);
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
+  if (img.close) img.close();
   const fs = Math.max(14, Math.round(Math.min(w, h) / 30));
   const lines = [
     formatWaktuWib(waktu) + (serverSynced ? '' : ' (jam perangkat)'),
@@ -799,7 +877,8 @@ $('btnCancelEdit').addEventListener('click', resetForm);
 $('formEntry').addEventListener('submit', async ev => {
   ev.preventDefault();
   // Harus dipanggil langsung di dalam klik agar jendela login Google tidak diblokir.
-  const photosForDrive = driveReady() ? newPhotos.map(p => p.file) : [];
+  const driveItems = driveReady() ? newPhotos.filter(p => p.state !== 'gagal') : [];
+  const photosForDrive = driveItems.map(p => p.file);
   const drivePromise = photosForDrive.length ? ensureDriveToken() : null;
   if (drivePromise) drivePromise.catch(() => {});
   await withBusy($('btnSave'), async () => {
@@ -814,11 +893,16 @@ $('formEntry').addEventListener('submit', async ev => {
     const driveJob = drivePromise
       ? drivePromise.then(() => copyToDrive(photosForDrive, driveInfo)).catch(error => ({ ids: [], error }))
       : null;
-    if (newPhotos.length) msg('saveMsg', `Mengunggah foto 0/${newPhotos.length}…`);
-    const fileChanges = await mapLimit(newPhotos, UPLOAD_CONCURRENCY, async (p, i) => {
-      const sha = await uploadBlob(await imageToBase64(p.file));
-      msg('saveMsg', `Mengunggah foto ${++done}/${newPhotos.length}…`);
-      return { path: `uploads/${y}/${m}/${d}/${id}-${stamp}${i}.jpg`, sha };
+    if (newPhotos.some(p => p.state === 'proses')) msg('saveMsg', 'Menyiapkan foto…');
+    await Promise.all(newPhotos.map(p => p.prep));
+    const ready = newPhotos.filter(p => p.state === 'ok');
+    const skipped = newPhotos.filter(p => p.state !== 'ok');
+    if (ready.length) msg('saveMsg', `Mengunggah foto 0/${ready.length}…`);
+    const fileChanges = await mapLimit(ready, UPLOAD_CONCURRENCY, async (p, i) => {
+      const sha = await uploadBlob(await blobToBase64(p.blob));
+      msg('saveMsg', `Mengunggah foto ${++done}/${ready.length}…`);
+      p.path = `uploads/${y}/${m}/${d}/${id}-${stamp}${i}.jpg`;
+      return { path: p.path, sha };
     });
     const uploaded = fileChanges.map(c => c.path);
     removedPhotos.forEach(path => fileChanges.push({ path, delete: true }));
@@ -844,7 +928,7 @@ $('formEntry').addEventListener('submit', async ev => {
     const fotoDrive = {};
     const oldDrive = (prev && prev.fotoDrive) || {};
     keptPhotos.forEach(f => { if (oldDrive[f]) fotoDrive[f] = oldDrive[f]; });
-    if (driveRes) uploaded.forEach((f, i) => { if (driveRes.ids[i]) fotoDrive[f] = driveRes.ids[i]; });
+    if (driveRes) driveItems.forEach((p, i) => { if (p.path && driveRes.ids[i]) fotoDrive[p.path] = driveRes.ids[i]; });
     if (Object.keys(fotoDrive).length) data.fotoDrive = fotoDrive;
 
     msg('saveMsg', 'Menyimpan ke GitHub…');
@@ -866,7 +950,8 @@ $('formEntry').addEventListener('submit', async ev => {
         driveMsg = null;
       }
     }
-    if (driveMsg !== null) toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan.${driveMsg} Menunggu website diperbarui…`);
+    const skipMsg = skipped.length ? ` ${skipped.length} foto dilewati karena tidak bisa dibaca.` : '';
+    if (driveMsg !== null) toast(`${isEdit ? 'Perubahan' : 'Kegiatan'} tersimpan.${driveMsg}${skipMsg} Menunggu website diperbarui…`, Boolean(skipped.length));
     resetForm();
     renderList();
     autoAi(tanggal);

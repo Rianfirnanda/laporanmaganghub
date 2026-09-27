@@ -428,6 +428,11 @@ a.lokasi:hover { color: var(--accent-ink); text-decoration: underline; }
 .preview { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; box-shadow: var(--raised-sm); }
 .preview img { width: 100%; height: 100%; object-fit: cover; }
 .preview.new { outline: 2px solid var(--accent); outline-offset: 2px; }
+.preview.failed { outline-color: var(--red); }
+.preview-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 11px; text-align: center; padding: 4px; box-shadow: var(--inset-sm); border-radius: inherit; }
+.preview-state.bad { color: var(--red); }
+.preview-state .ic { width: 20px; height: 20px; }
+.ic.spin { animation: spin 1s linear infinite; }
 .preview button { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(15, 20, 30, .75); color: #fff; cursor: pointer; display: grid; place-items: center; }
 .preview button .ic { width: 14px; height: 14px; }
 .quick-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
