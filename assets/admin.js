@@ -393,12 +393,10 @@ $('formUnlock').addEventListener('submit', async ev => {
     AI_KEY = stored.aiEnc ? await decryptToken(stored.aiEnc, $('uPass').value).catch(() => '') : '';
     GROQ_KEY = stored.groqEnc ? await decryptToken(stored.groqEnc, $('uPass').value).catch(() => '') : '';
     SCRIPT_KEY = stored.scriptEnc ? await decryptToken(stored.scriptEnc, $('uPass').value).catch(() => '') : '';
-    const unlockPass = $('uPass').value;
     $('uPass').value = '';
     rememberMe = $('uRemember').checked;
     saveSession();
     await enterApp();
-    adoptScriptKey(unlockPass);
   });
 });
 
@@ -1500,7 +1498,7 @@ function toggleKet() {
 }
 
 function renderHarianList() {
-  const dates = Object.keys(harian).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  const dates = Object.keys(harian).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && harian[d] && typeof harian[d] === 'object').sort().reverse();
   $('harianCount').textContent = `${dates.length} hari tersimpan`;
   $('harianList').innerHTML = dates.length ? dates.map(d => {
     const r = harian[d];
@@ -1940,7 +1938,8 @@ async function loadScriptTemplate() {
 }
 
 function scriptCodeFor(key) {
-  return scriptTemplate.replace('__KUNCI_RAHASIA__', key);
+  // Kunci selalu base64url; karakter lain dibuang agar kode skrip tidak rusak.
+  return scriptTemplate.replace('__KUNCI_RAHASIA__', () => String(key || '').replace(/[^A-Za-z0-9_-]/g, ''));
 }
 
 async function renderScript() {
@@ -1959,6 +1958,17 @@ async function renderScript() {
 
 $('dScriptKey').addEventListener('input', () => {
   if (scriptTemplate) $('scriptCode').textContent = scriptCodeFor($('dScriptKey').value.trim());
+});
+
+$('btnScriptKeyCopy').addEventListener('click', async () => {
+  const key = $('dScriptKey').value.trim();
+  if (!key) return;
+  try {
+    await navigator.clipboard.writeText(key);
+    toast('Kunci rahasia disalin. Tempel di kartu yang sama pada perangkat lain, jangan dibagikan ke orang lain.');
+  } catch {
+    toast('Salin manual: tekan lama pada kolom kunci.', true);
+  }
 });
 
 $('btnScriptCheck').addEventListener('click', () => {
@@ -1995,7 +2005,7 @@ $('formScript').addEventListener('submit', async ev => {
   const key = $('dScriptKey').value.trim();
   const pass = $('dScriptPass').value;
   if (!SCRIPT_URL_RE.test(url)) return toast('URL tidak valid. Harus berbentuk https://script.google.com/macros/s/…/exec', true);
-  if (key.length < 20) return toast('Kunci rahasia terlalu pendek. Salin dari perangkat pertama atau buat kunci baru.', true);
+  if (!/^[A-Za-z0-9_-]{20,}$/.test(key)) return toast('Kunci rahasia tidak valid. Salin dari perangkat pertama atau buat kunci baru.', true);
   const stored = readStore();
   if (!stored) return;
   await withBusy(ev.submitter, async () => {
@@ -2006,11 +2016,12 @@ $('formScript').addEventListener('submit', async ev => {
     SCRIPT_KEY = key;
     writeStore({ ...readStore(), scriptEnc: await encryptToken(key, pass) });
     saveSession();
-    const kunciEnc = await encryptToken(key, pass);
     let latest;
+    // Hanya URL yang disimpan di repo (publik). Kunci rahasia tetap di perangkat;
+    // perangkat lain menyalinnya lewat tombol "Salin kunci" di perangkat pertama.
     await commit('Atur Google Drive lewat Apps Script', async base => {
       latest = await readRepoJSON(CONFIG_PATH, base, {});
-      latest.drive = { ...(latest.drive || {}), skrip: { url, kunciEnc } };
+      latest.drive = { ...(latest.drive || {}), skrip: { url } };
       return [{ path: CONFIG_PATH, content: JSON.stringify(latest, null, 2) + '\n' }];
     });
     CFG = { ...CFG, drive: latest.drive };
@@ -2041,20 +2052,6 @@ $('btnScriptForget').addEventListener('click', () => {
     toast('Pengaturan Apps Script dihapus.');
   });
 });
-
-// Perangkat baru: kunci dibuka dari config.json (terenkripsi kata sandi panel).
-async function adoptScriptKey(pass) {
-  const enc = CFG && CFG.drive && CFG.drive.skrip && CFG.drive.skrip.kunciEnc;
-  if (SCRIPT_KEY || !enc || !pass || repoSalinan()) return;
-  try {
-    SCRIPT_KEY = await decryptToken(enc, pass);
-    const st = readStore();
-    if (st) writeStore({ ...st, scriptEnc: await encryptToken(SCRIPT_KEY, pass) });
-    saveSession();
-    renderScript();
-    renderDrive();
-  } catch { /* kata sandi berbeda: kunci diisi manual di kartu Apps Script */ }
-}
 
 function loadGis() {
   if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();

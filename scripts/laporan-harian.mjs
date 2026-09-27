@@ -48,31 +48,45 @@ if (!todo.length) {
 }
 
 const log = t => console.log(`  ${t}`);
+// Tiap tanggal ditulis terpisah: satu tanggal gagal tidak membatalkan yang lain.
+const selesai = [];
+const gagal = [];
 for (const date of todo) {
   const rec = harian[date] || {};
   console.log(`Menulis laporan ${date}…`);
-  const prompt = ai.buildHarianPrompt({ config, entries, harian, date, status: rec.status || 'Hadir', ket: rec.keterangan || '', tanggalLabel: label(date) });
-  const res = await ai.aiGenerate({ keys, system: ai.AI_SYSTEM, prompt, schema: ai.HARIAN_SCHEMA, temperature: 0.9, onStatus: log });
-  harian[date] = {
-    ...rec,
-    status: rec.status || 'Hadir',
-    ...ai.cleanHarian(res.data),
-    auto: true,
-    sumber: ai.sumberHarian(entries, date),
-    model: `${res.provider} · ${res.model} (robot)`,
-    diperbarui: new Date().toISOString()
-  };
-  log(`selesai dengan ${res.provider} · ${res.model}`);
+  try {
+    const prompt = ai.buildHarianPrompt({ config, entries, harian, date, status: rec.status || 'Hadir', ket: rec.keterangan || '', tanggalLabel: label(date) });
+    const res = await ai.aiGenerate({ keys, system: ai.AI_SYSTEM, prompt, schema: ai.HARIAN_SCHEMA, temperature: 0.9, onStatus: log });
+    harian[date] = {
+      ...rec,
+      status: rec.status || 'Hadir',
+      ...ai.cleanHarian(res.data),
+      auto: true,
+      sumber: ai.sumberHarian(entries, date),
+      model: `${res.provider} · ${res.model} (robot)`,
+      diperbarui: new Date().toISOString()
+    };
+    selesai.push(date);
+    log(`selesai dengan ${res.provider} · ${res.model}`);
+  } catch (e) {
+    gagal.push(date);
+    log(`gagal: ${e.message}`);
+  }
+}
+if (!selesai.length) {
+  console.log('Tidak ada laporan yang berhasil ditulis.');
+  process.exit(1);   // workflow mengirim notifikasi "gagal"
 }
 write('data/harian.json', Object.fromEntries(Object.entries(harian).sort(([a], [b]) => b.localeCompare(a))));
 
 // Pesan notifikasi push (dikirim workflow setelah laporan berhasil disimpan).
 if (process.env.NOTIF_FILE) {
-  const first = harian[todo[0]] || {};
+  const first = harian[selesai[0]] || {};
+  const catatan = gagal.length ? ` (${gagal.map(label).join(', ')} belum berhasil, dicoba lagi nanti)` : '';
   fs.writeFileSync(process.env.NOTIF_FILE, JSON.stringify([{
     kategori: 'ai',
-    judul: `✨ Laporan harian ${todo.length > 1 ? `${todo.length} hari ` : ''}siap disalin`,
-    isi: `${todo.map(label).join(', ')}: ${first.ringkasan || ''}`,
+    judul: `✨ Laporan harian ${selesai.length > 1 ? `${selesai.length} hari ` : ''}siap disalin`,
+    isi: `${selesai.map(label).join(', ')}${catatan}: ${first.ringkasan || ''}`,
     url: 'admin.html?aksi=harian',
     tag: 'ai'
   }]));

@@ -23,10 +23,6 @@ function toDateStr(date) {
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
 
-function todayStr() {
-  return toDateStr(new Date());
-}
-
 function daysBetween(a, b) {
   return Math.round((parseDate(b) - parseDate(a)) / DAY_MS);
 }
