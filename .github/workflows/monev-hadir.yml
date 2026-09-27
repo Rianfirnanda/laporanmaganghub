@@ -1,0 +1,36 @@
+name: Daftar hadir MagangHub
+
+# Tahap 1: dijalankan manual (Actions → "Daftar hadir MagangHub" → Run workflow)
+# untuk melaporkan struktur halaman monev. Jadwal otomatis ditambahkan
+# setelah skrip sinkronisasi dibuat dari laporan ini.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monev-hadir
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Pasang Playwright
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+
+      - name: Login dan laporkan struktur halaman
+        env:
+          MONEV_USERNAME: ${{ secrets.MONEV_USERNAME }}
+          MONEV_PASSWORD: ${{ secrets.MONEV_PASSWORD }}
+        run: node scripts/monev-discover.mjs
