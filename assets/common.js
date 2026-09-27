@@ -99,6 +99,47 @@ function applyTheme(color) {
   document.documentElement.style.setProperty('--accent', safeColor(color));
 }
 
+// ---------- Waktu server (WIB) ----------
+// Jam HP/laptop bisa salah atau diubah, jadi waktu diambil dari header "Date"
+// server GitHub Pages lalu dipakai sebagai selisih terhadap jam perangkat.
+const ZONA = 'Asia/Jakarta';
+let serverOffset = 0;
+let serverSynced = false;
+
+async function syncServerTime() {
+  try {
+    const t0 = Date.now();
+    const res = await fetch(`data/config.json?waktu=${t0}`, { method: 'HEAD', cache: 'no-store' });
+    const t1 = Date.now();
+    const date = Date.parse(res.headers.get('Date') || '');
+    if (!Number.isFinite(date)) return false;
+    // Header Date dibulatkan ke detik; ambil titik tengah perjalanan permintaan.
+    serverOffset = date + 500 - (t0 + t1) / 2;
+    serverSynced = true;
+  } catch { /* offline: pakai jam perangkat */ }
+  return serverSynced;
+}
+
+function serverNow() {
+  return new Date(Date.now() + serverOffset);
+}
+
+// Bagian tanggal/jam dalam WIB, apa pun zona waktu perangkat.
+function wibParts(date = serverNow()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date).map(x => [x.type, x.value]));
+  return { tanggal: `${p.year}-${p.month}-${p.day}`, jam: `${p.hour}:${p.minute}`, detik: p.second };
+}
+
+// "Sabtu, 27 September 2026 · 15.35.12 WIB"
+function formatWaktuWib(date, withDate = true) {
+  const w = wibParts(date);
+  const jam = `${w.jam.replace(':', '.')}.${w.detik} WIB`;
+  return withDate ? `${formatTanggal(w.tanggal)} · ${jam}` : jam;
+}
+
 // ---------- Ikon (garis, gaya Lucide) ----------
 const ICONS = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
@@ -131,6 +172,10 @@ const ICONS = {
   loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
   alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  locate: '<path d="M2 12h3M19 12h3M12 2v3M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+  badge: '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'
 };
 

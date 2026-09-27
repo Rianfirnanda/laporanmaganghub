@@ -3,18 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=13"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <script src="assets/theme.js?v=15"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/app-icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Panel Admin · Laporan Magang</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Crect x='20' y='28' width='24' height='20' rx='3' fill='white'/%3E%3Cpath d='M25 28v-5a7 7 0 0 1 14 0v5' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Naikkan ?v= setiap kali CSS/JS diubah agar browser tidak memakai cache lama. -->
-  <link rel="stylesheet" href="assets/style.css?v=13">
+  <link rel="stylesheet" href="assets/style.css?v=15">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -129,6 +132,17 @@
             <button class="btn btn-light btn-sm" type="button" id="btnCancelEdit" hidden>Batal edit</button>
           </div>
           <form id="formEntry" class="form card-body">
+            <div class="quick-bar">
+              <div class="server-clock" id="serverClock" title="Diambil dari server, bukan dari jam HP">
+                <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
+                <div><strong class="sc-time" id="scTime">--.--.--</strong><small id="scNote">Menyinkronkan waktu server…</small></div>
+              </div>
+              <label class="btn btn-primary quick-cam" id="quickCam">
+                <input type="file" id="fKamera" accept="image/*" capture="environment">
+                <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Ambil foto
+              </label>
+              <button class="btn btn-outline" type="button" id="btnInstall" hidden><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Pasang di layar utama</button>
+            </div>
             <div class="row">
               <label class="field"><span>Tanggal</span><input type="date" id="fTanggal" required></label>
               <label class="field"><span>Jam</span><input type="time" id="fJam" required></label>
@@ -139,19 +153,37 @@
             <label class="field"><span>Judul kegiatan</span>
               <input id="fJudul" required maxlength="140" placeholder="Contoh: Entri data Susenas di aplikasi">
             </label>
-            <label class="field"><span>Lokasi (opsional)</span>
-              <input id="fLokasi" maxlength="120" placeholder="Contoh: Ruang IPDS, Kantor BPS Benteng">
-            </label>
+            <div class="field">
+              <label for="fLokasi">Lokasi</label>
+              <div class="input-with-btn">
+                <input id="fLokasi" maxlength="160" placeholder="Diisi otomatis dari GPS, atau ketik sendiri">
+                <button class="btn btn-light" type="button" id="btnGps" title="Ambil lokasi dari GPS"><svg class="ic" aria-hidden="true"><use href="#i-locate"/></svg><span class="btn-label"> GPS</span></button>
+              </div>
+              <small class="field-hint" id="gpsMsg"></small>
+            </div>
             <label class="field"><span>Keterangan</span>
               <textarea id="fKet" rows="4" maxlength="5000" placeholder="Jelaskan apa yang dikerjakan, hasilnya, dan siapa yang terlibat."></textarea>
             </label>
             <div class="field">
               <span>Foto dokumentasi</span>
-              <label class="dropzone" id="dropzone">
-                <input type="file" id="fFoto" accept="image/*" multiple>
-                <span class="dz-icon"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg></span>
-                <strong>Pilih atau seret foto ke sini</strong>
-                <small>Bisa banyak foto sekaligus. Otomatis diperkecil (maks. 1600px).</small>
+              <div class="photo-src">
+                <label class="dropzone dz-camera">
+                  <input type="file" id="fKamera2" accept="image/*" capture="environment">
+                  <span class="dz-icon"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
+                  <strong>Kamera</strong>
+                  <small>Foto langsung, diberi cap waktu &amp; lokasi</small>
+                </label>
+                <label class="dropzone" id="dropzone">
+                  <input type="file" id="fFoto" accept="image/*" multiple>
+                  <span class="dz-icon"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg></span>
+                  <strong>Galeri / file</strong>
+                  <small>Pilih atau seret beberapa foto sekaligus</small>
+                </label>
+              </div>
+              <label class="switch-row stamp-row">
+                <input type="checkbox" id="fStamp" checked>
+                <span class="switch" aria-hidden="true"></span>
+                <span>Cap waktu server &amp; lokasi GPS pada foto dari kamera</span>
               </label>
               <div class="previews" id="previews"></div>
               <p class="drive-note" id="driveNote" hidden><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Foto asli juga disalin ke Google Drive › <b>Laporan Magang</b></p>
@@ -187,6 +219,17 @@
             <div class="head-text"><h3>Laporan harian</h3><span>Tiga isian daftar hadir monev MagangHub (sore hari)</span></div>
           </div>
           <form id="formHarian" class="form card-body">
+            <div class="quick-bar">
+              <div class="server-clock" title="Waktu server (WIB) dan lokasi GPS saat ini">
+                <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
+                <div><strong class="sc-time">--.--.--</strong><small id="hLok">Mencari lokasi GPS…</small></div>
+              </div>
+              <label class="btn btn-primary quick-cam">
+                <input type="file" accept="image/*" capture="environment">
+                <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Foto kegiatan
+              </label>
+            </div>
+            <p class="note ai-auto-note"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Laporan ditulis otomatis oleh AI setiap kegiatan disimpan. Tinggal salin ke monev MagangHub. Laporan yang Anda edit sendiri tidak akan ditimpa.</p>
             <div class="row">
               <label class="field"><span>Tanggal</span><input type="date" id="hTanggal" required></label>
               <label class="field"><span>Status kehadiran</span>
@@ -199,7 +242,7 @@
               <ul class="day-entries" id="hEntries"></ul>
             </div>
             <div class="actions">
-              <button class="btn btn-light" type="button" id="btnAi"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Buat dengan AI</button>
+              <button class="btn btn-light" type="button" id="btnAi"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Tulis ulang dengan AI</button>
               <span class="progress-msg" id="aiMsg"></span>
             </div>
             <div class="report-field">
@@ -225,25 +268,33 @@
           <section class="card">
             <div class="card-header">
               <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
-              <div class="head-text"><h3>Asisten AI (Gemini)</h3><span id="aiStatus">Belum diatur</span></div>
+              <div class="head-text"><h3>Asisten AI</h3><span id="aiStatus">Belum diatur</span></div>
             </div>
             <form id="formAi" class="form card-body" autocomplete="off">
-              <p class="note">Laporan ditulis oleh Google Gemini (gratis) dari catatan kegiatan hari itu. Kunci API disimpan terenkripsi dengan kata sandi panel. Catatan kegiatan hari itu dikirim ke Google saat tombol <b>Buat dengan AI</b> ditekan; pada layanan gratis, Google dapat memakai data itu untuk meningkatkan produknya.</p>
-              <label class="field"><span>Kunci API Gemini</span><input id="aiKey" class="secret-text" type="text" name="gemini-key" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Tempel kunci dari AI Studio, mis. AIzaSy…"></label>
+              <p class="note">Dua layanan gratis dipakai berlapis. <b>Gemini</b> dicoba lebih dulu, lalu model Flash lain bila sedang sibuk (galat 503) atau kuotanya habis. Setelah itu <b>Groq</b> sebagai cadangan. Isi salah satu atau keduanya; dengan keduanya, laporan hampir tidak pernah gagal. Kunci disimpan terenkripsi dengan kata sandi panel. Catatan kegiatan dikirim ke layanan AI untuk ditulis ulang.</p>
+              <label class="field"><span>Kunci API Gemini <small id="aiHasGemini"></small></span><input id="aiKey" class="secret-text" type="text" name="gemini-key" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Dari aistudio.google.com, diawali AIza…"></label>
+              <label class="field"><span>Kunci API Groq, cadangan <small id="aiHasGroq"></small></span><input id="groqKey" class="secret-text" type="text" name="groq-key" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Dari console.groq.com, diawali gsk_…"></label>
               <label class="field"><span>Kata sandi panel (untuk mengenkripsi kunci)</span><input id="aiPass" type="password" autocomplete="current-password"></label>
-              <label class="field" id="aiModelWrap" hidden><span>Model</span><select id="aiModel"></select></label>
+              <label class="field" id="aiModelWrap" hidden><span>Model Gemini utama</span><select id="aiModel"></select></label>
               <div class="actions">
                 <button class="btn btn-primary" type="submit">Simpan kunci</button>
                 <button class="btn btn-danger" type="button" id="btnAiForget" hidden>Hapus kunci</button>
                 <button class="btn btn-light" type="button" id="btnSummary"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Perbarui ringkasan dasbor</button>
               </div>
               <details class="help">
-                <summary>Cara mendapatkan kunci API Gemini (gratis)</summary>
+                <summary>Cara mendapatkan kunci Gemini (gratis)</summary>
                 <ol>
                   <li>Buka <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> dan masuk dengan akun Google.</li>
-                  <li>Klik <b>Create API key</b>. Bila diminta memilih project, pilih project Google Cloud yang sudah ada (misalnya yang dipakai untuk Google Drive) atau buat baru.</li>
-                  <li>Klik ikon salin di samping kunci (biasanya diawali <code>AIza</code>, sekitar 39 karakter). Tidak perlu kartu kredit atau billing.</li>
-                  <li>Tempel di kolom di atas, isi kata sandi panel, lalu klik <b>Simpan kunci</b>. Panel otomatis memilih model Gemini Flash terbaru.</li>
+                  <li>Klik <b>Create API key</b>, pilih project yang ada atau buat baru. Tidak perlu kartu kredit.</li>
+                  <li>Salin kunci (diawali <code>AIza</code>), tempel di atas, isi kata sandi panel, lalu <b>Simpan kunci</b>.</li>
+                </ol>
+              </details>
+              <details class="help">
+                <summary>Cara mendapatkan kunci Groq (gratis, cadangan)</summary>
+                <ol>
+                  <li>Buka <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> dan masuk (bisa dengan akun Google). Tidak perlu kartu kredit.</li>
+                  <li>Klik <b>Create API Key</b>, beri nama misalnya <i>laporan-magang</i>, lalu salin kuncinya (diawali <code>gsk_</code>). Kunci hanya ditampilkan sekali.</li>
+                  <li>Tempel di kolom Groq, isi kata sandi panel, lalu <b>Simpan kunci</b>.</li>
                 </ol>
               </details>
             </form>
@@ -488,9 +539,15 @@
     </div>
   </template>
 
+  <label class="fab" id="fabCam" hidden aria-label="Ambil foto kegiatan">
+    <input type="file" accept="image/*" capture="environment">
+    <svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>
+  </label>
+
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=13"></script>
-  <script src="assets/admin.js?v=13"></script>
+  <script src="assets/common.js?v=15"></script>
+  <script src="assets/ai.js?v=15"></script>
+  <script src="assets/admin.js?v=15"></script>
 </body>
 </html>

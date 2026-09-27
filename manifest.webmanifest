@@ -1,0 +1,40 @@
+{
+  "name": "Laporan Magang · Panel Admin",
+  "short_name": "Laporan Magang",
+  "description": "Catat kegiatan magang harian: foto dari kamera, lokasi GPS, dan waktu server.",
+  "lang": "id",
+  "id": "admin.html",
+  "start_url": "admin.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e6ebf2",
+  "theme_color": "#163ba2",
+  "icons": [
+    { "src": "assets/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/app-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Foto kegiatan",
+      "short_name": "Kamera",
+      "description": "Buka formulir kegiatan baru dengan kamera, GPS, dan waktu server",
+      "url": "admin.html?aksi=kamera",
+      "icons": [{ "src": "assets/shortcut-camera.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Laporan harian",
+      "short_name": "Laporan",
+      "description": "Buat ringkasan, pembelajaran, dan kendala hari ini",
+      "url": "admin.html?aksi=harian",
+      "icons": [{ "src": "assets/shortcut-report.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Dasbor publik",
+      "short_name": "Dasbor",
+      "url": "./",
+      "icons": [{ "src": "assets/app-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
