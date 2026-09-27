@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T10:27:15.531Z",
+  "diperbarui": "2026-09-27T10:31:15.924Z",
   "minggu": 1,
-  "mingguIni": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia mengembangkan dan menyempurnakan fitur visualisasi serta manajemen data pada dashboard kegiatan, memindahkan proses analisis sentimen ke sisi browser, serta melatih ulang model klasifikasi dengan akurasi 81,4 persen. Selain itu, ia mengikuti sosialisasi SSO, menangani anomali data, dan berpartisipasi dalam rangkaian lomba serta persiapan Hari Statistik Nasional.",
+  "mingguIni": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi MagangHub Batch 2, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia melanjutkan pengembangan website monitoring dengan menambah visualisasi grafik, mengelola data di Firestore, serta memindahkan kalkulasi model sentimen ke sisi browser dan melatih ulang model dengan akurasi 81,4 %. Selain itu, Rian ikut sosialisasi SSO, menangani anomali data Merigi Sakti, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional.",
   "sorotan": [
-    "Pengembangan dashboard visualisasi",
+    "Pengembangan dashboard visual",
     "Model sentimen akurasi tinggi",
-    "Partisipasi kegiatan HSN"
+    "Partisipasi lomba HSN"
   ],
-  "keseluruhan": "Rian telah menunjukkan inisiatif kuat dalam memahami sistem BPS serta mengoptimalkan aplikasi monitoring. Selama minggu pertama, ia berhasil mengintegrasikan fitur baru, mengatasi masalah teknis, dan berkontribusi pada kegiatan kantor, menandai progres yang menjanjikan dalam magangnya.",
+  "keseluruhan": "Rian telah menunjukkan inisiatif kuat dalam memahami sistem dan meningkatkan fungsionalitas website sejak awal magang. Pengalaman beragam, mulai dari teknis hingga kegiatan sosial, menandai progres yang konsisten dalam peran asisten pranata komputer.",
   "mingguan": {
-    "1": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia mengembangkan dan menyempurnakan fitur visualisasi serta manajemen data pada dashboard kegiatan, memindahkan proses analisis sentimen ke sisi browser, serta melatih ulang model klasifikasi dengan akurasi 81,4 persen. Selain itu, ia mengikuti sosialisasi SSO, menangani anomali data, dan berpartisipasi dalam rangkaian lomba serta persiapan Hari Statistik Nasional."
+    "1": "Pada minggu pertama, Rian memperkenalkan diri dalam sesi orientasi MagangHub Batch 2, mempelajari alur kerja website lintas-benteng, dan menginstal VPN. Ia melanjutkan pengembangan website monitoring dengan menambah visualisasi grafik, mengelola data di Firestore, serta memindahkan kalkulasi model sentimen ke sisi browser dan melatih ulang model dengan akurasi 81,4 %. Selain itu, Rian ikut sosialisasi SSO, menangani anomali data Merigi Sakti, dan berpartisipasi dalam rangkaian lomba Hari Statistik Nasional."
   }
 }
