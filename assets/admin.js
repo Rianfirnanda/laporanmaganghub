@@ -4,7 +4,7 @@
 // Keamanan:
 // - Token GitHub dienkripsi (AES-GCM, kunci dari kata sandi via PBKDF2) sebelum
 //   disimpan di localStorage. Token asli hanya ada di memori selama panel terbuka.
-// - Panel terkunci otomatis setelah tidak aktif, dan tidak mau tampil di dalam frame.
+// - Panel dikunci lewat tombol Kunci atau saat dimuat ulang, dan tidak mau tampil di dalam frame.
 
 // Tolak dibuka di dalam <iframe> (mencegah clickjacking).
 if (window.top !== window.self) {
@@ -17,7 +17,6 @@ const STORE_KEY = 'laporanmagang.v2';
 const LEGACY_KEY = 'laporanmagang.settings';
 const DATA_PATH = 'data/kegiatan.json';
 const CONFIG_PATH = 'data/config.json';
-const AUTO_LOCK_MINUTES = 15;
 const PBKDF2_ITERATIONS = 310000;
 const UPLOAD_CONCURRENCY = 3;
 const DEPLOY_POLL_MS = 4000;
@@ -289,7 +288,6 @@ $('btnForgot').addEventListener('click', () => {
 
 async function enterApp() {
   show('app');
-  touch();
   renderSecurity();
   resetForm();
   await Promise.all([loadEntries(), loadConfig()]);
@@ -310,16 +308,6 @@ $('btnLock').addEventListener('click', () => {
   if (busy) return toast('Tunggu proses penyimpanan selesai.', true);
   lock('Panel dikunci.');
 });
-
-// Kunci otomatis saat tidak aktif
-let lastActive = Date.now();
-function touch() { lastActive = Date.now(); }
-['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(t => document.addEventListener(t, touch, { passive: true }));
-setInterval(() => {
-  if (TOKEN && !busy && Date.now() - lastActive > AUTO_LOCK_MINUTES * 60000) {
-    lock(`Panel dikunci otomatis setelah ${AUTO_LOCK_MINUTES} menit tidak aktif.`);
-  }
-}, 20000);
 
 // ================= Tab =================
 $('tabbar').addEventListener('click', ev => {
@@ -733,7 +721,7 @@ function renderSecurity() {
     ['Repository', `${S.owner}/${S.repo} (branch ${S.branch})`],
     ['Jenis token', TOKEN.startsWith('github_pat_') ? '✅ Fine-grained' : '⚠️ Classic, sebaiknya diganti fine-grained'],
     ['Penyimpanan token', stored ? '✅ Terenkripsi AES-256 dengan kata sandi panel' : '—'],
-    ['Kunci otomatis', `Setelah ${AUTO_LOCK_MINUTES} menit tidak aktif`]
+    ['Kunci', 'Manual (tombol Kunci) atau saat halaman dimuat ulang']
   ];
   $('secInfo').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
 }
@@ -828,8 +816,7 @@ async function withBusy(btn, fn, msgId) {
     busy--;
     if (btn) btn.disabled = false;
     if (msgId) msg(msgId, '');
-    touch();
-  }
+    }
 }
 
 let toastTimer;

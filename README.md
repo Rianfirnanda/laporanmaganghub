@@ -49,7 +49,7 @@ Untuk pemeriksaan mingguan, kirim tautan dengan filter minggu, misalnya
 ## Jika tampilan berantakan setelah pembaruan
 
 GitHub Pages menyimpan cache file CSS/JS di browser sekitar 10 menit. Setiap file CSS/JS dimuat dengan
-penanda versi (`style.css?v=4`), jadi browser otomatis mengambil versi baru. Kalau tampilan masih aneh,
+penanda versi (`style.css?v=5`), jadi browser otomatis mengambil versi baru. Kalau tampilan masih aneh,
 tekan **Ctrl + F5** (atau **Cmd + Shift + R** di Mac) sekali untuk memuat ulang tanpa cache.
 
 Untuk pengembang: setiap kali mengubah file di `assets/`, naikkan angka `?v=` di `index.html` dan `admin.html`.
@@ -67,7 +67,7 @@ Yang melindungi repository adalah **token GitHub**. Panel ini menjaga token itu 
 | Perlindungan | Keterangan |
 |---|---|
 | Token terenkripsi | Disimpan di browser dalam bentuk terenkripsi AES-256-GCM, dengan kunci dari kata sandi panel (PBKDF2-SHA256, 310.000 iterasi). Token asli hanya ada di memori selama panel terbuka. |
-| Kunci otomatis | Panel terkunci setelah 15 menit tidak aktif, saat tombol **Kunci** ditekan, atau saat halaman dimuat ulang. |
+| Kunci panel | Panel terkunci saat tombol **Kunci** ditekan atau saat halaman dimuat ulang/ditutup. |
 | Batas percobaan | Setelah 5 kali salah kata sandi, percobaan berikutnya ditunda. |
 | Content-Security-Policy | Hanya skrip dari situs ini yang boleh berjalan, dan panel admin hanya boleh terhubung ke `api.github.com`. |
 | Anti-clickjacking | Panel admin menolak tampil di dalam `<iframe>`. |
