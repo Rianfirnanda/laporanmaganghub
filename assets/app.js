@@ -16,6 +16,7 @@ async function init() {
     $('timeline').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
     return;
   }
+  ENTRIES = (Array.isArray(ENTRIES) ? ENTRIES : []).filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.tanggal));
   renderProfile();
   renderStats();
   fillWeekFilter();
@@ -24,13 +25,23 @@ async function init() {
 }
 
 function renderProfile() {
-  document.title = `Laporan Magang · ${CONFIG.nama}`;
-  $('avatar').textContent = inisial(CONFIG.nama);
+  applyTheme(CONFIG.warnaTema);
+  document.title = CONFIG.judulSitus || `Laporan Magang · ${CONFIG.nama}`;
+  const foto = safePath(CONFIG.fotoProfil);
+  if (foto) {
+    const img = document.createElement('img');
+    img.src = foto;
+    img.alt = `Foto ${CONFIG.nama}`;
+    $('avatar').replaceChildren(img);
+  } else {
+    $('avatar').textContent = inisial(CONFIG.nama);
+  }
   $('nama').textContent = CONFIG.nama;
   $('posisi').textContent = CONFIG.posisi;
+  $('posisi').hidden = !CONFIG.posisi;
   $('instansi').textContent = CONFIG.instansi;
   $('program').textContent = CONFIG.program || '';
-  $('footerText').textContent = `${CONFIG.instansi} · ${formatTanggal(CONFIG.tanggalMulai, false)} – ${formatTanggal(CONFIG.tanggalSelesai, false)}`;
+  renderFooter();
 
   const total = daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1;
   const now = Math.min(Math.max(hariKe(CONFIG, todayStr()), 0), total);
@@ -42,6 +53,27 @@ function renderProfile() {
   $('progressLabel').textContent = now > 0 ? `Hari ke-${now} dari ${total}` : 'Belum dimulai';
   $('progressSub').textContent = now > 0 ? `Sisa ${total - now} hari · Minggu ke-${mingguKe(CONFIG, todayStr())}` : `Mulai ${formatTanggal(CONFIG.tanggalMulai, false)}`;
   $('progress').hidden = false;
+}
+
+function renderFooter() {
+  const f = CONFIG.footer || {};
+  const periode = `${formatTanggal(CONFIG.tanggalMulai, false)} – ${formatTanggal(CONFIG.tanggalSelesai, false)}`;
+  let html = `<div class="footer-col">
+    <h4>${esc(CONFIG.nama)}</h4>
+    <p>${esc(CONFIG.posisi)}<br>${esc(CONFIG.instansi)}<br>${periode}</p>
+  </div>`;
+  html += (f.bagian || []).filter(b => b.judul || b.isi).map(b => `<div class="footer-col">
+    ${b.judul ? `<h4>${esc(b.judul)}</h4>` : ''}
+    ${b.isi ? `<p>${esc(b.isi)}</p>` : ''}
+  </div>`).join('');
+  const links = (f.tautan || []).map(l => ({ label: l.label, url: safeUrl(l.url) })).filter(l => l.url);
+  if (links.length) {
+    html += `<div class="footer-col"><h4>${esc(f.judulTautan || 'Tautan')}</h4><ul>${links.map(l =>
+      `<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || l.url)}</a></li>`).join('')}</ul></div>`;
+  }
+  $('footerGrid').innerHTML = html;
+  $('footerText').textContent = f.teks || `© ${new Date().getFullYear()} ${CONFIG.nama} · ${CONFIG.instansi}`;
+  $('adminLink').hidden = !CONFIG.tampilkanLinkAdmin;
 }
 
 function renderStats() {
@@ -135,8 +167,8 @@ function render() {
 }
 
 function renderEntry(e) {
-  const sesi = e.sesi || sesiDariJam(e.jam);
-  const photos = (e.foto || []).map(src => {
+  const sesi = ['Pagi', 'Siang', 'Sore'].includes(e.sesi) ? e.sesi : sesiDariJam(e.jam);
+  const photos = (e.foto || []).map(safePath).filter(Boolean).map(src => {
     const i = lbPhotos.push({ src, cap: `${e.judul} · ${formatTanggal(e.tanggal)}${e.jam ? ' · ' + e.jam : ''}` }) - 1;
     return `<button class="photo" data-lb="${i}" type="button"><img src="${esc(src)}" alt="${esc(e.judul)}" loading="lazy"></button>`;
   }).join('');

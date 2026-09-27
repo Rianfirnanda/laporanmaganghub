@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian magang di BPS Kabupaten Bengkulu Tengah.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a5cff'/%3E%3Cpath d='M20 18h24v30H20z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M26 28h12M26 36h12' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -63,9 +66,14 @@
     </section>
   </main>
 
-  <footer class="footer container">
-    <span id="footerText"></span>
-    <a href="admin.html" class="admin-link">Panel admin</a>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid" id="footerGrid"></div>
+      <div class="footer-bottom">
+        <span id="footerText"></span>
+        <a href="admin.html" id="adminLink" hidden>Panel admin</a>
+      </div>
+    </div>
   </footer>
 
   <div class="lightbox" id="lightbox" hidden>

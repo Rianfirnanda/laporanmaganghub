@@ -76,3 +76,25 @@ async function fetchJSON(url) {
 function inisial(nama) {
   return (nama || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
 }
+
+// ---------- Validasi data (pertahanan terhadap isi yang tidak diharapkan) ----------
+
+// Hanya izinkan tautan http(s), email, dan telepon (tolak "javascript:" dsb.).
+function safeUrl(url) {
+  const s = String(url || '').trim();
+  return /^(https?:\/\/|mailto:|tel:)/i.test(s) ? s : '';
+}
+
+// Foto harus berada di folder uploads/ repository ini.
+function safePath(path) {
+  const s = String(path || '');
+  return /^uploads\/[A-Za-z0-9._/-]+$/.test(s) && !s.includes('..') ? s : '';
+}
+
+function safeColor(color, fallback = '#1a5cff') {
+  return /^#[0-9a-f]{6}$/i.test(color || '') ? color : fallback;
+}
+
+function applyTheme(color) {
+  document.documentElement.style.setProperty('--accent', safeColor(color));
+}
