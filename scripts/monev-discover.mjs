@@ -124,6 +124,37 @@ async function main() {
   for (const f of await describeForm(page)) log(`- \`${JSON.stringify(f)}\``);
 
   let loginFailed = false;
+
+  // Login tunggal (SSO): monev bisa mengalihkan ke SIAPkerja/MagangHub, atau
+  // menampilkan tombol "Masuk dengan SIAPkerja" dulu. Ikuti sampai 3 langkah
+  // hingga kolom kata sandi muncul.
+  for (let hop = 0; hop < 3 && !(await page.$('input[type="password"]')); hop++) {
+    // Formulir dua langkah: email/NIK dulu, kata sandi di layar berikutnya.
+    const idField = await page.$('input[type="email"], input[name*="email" i], input[name*="user" i], input[name*="nik" i], input[name*="login" i]');
+    if (idField) {
+      log('\n- Mengisi email/username (formulir dua langkah)');
+      await idField.fill(USER);
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+        idField.press('Enter')
+      ]);
+      await page.waitForTimeout(3000);
+      if (await page.$('input[type="password"]')) break;
+    }
+    const btn = page.locator('a, button, [role="button"]').filter({ hasText: /siap\s*kerja|masuk|login|log in|sign in|lanjut|next/i }).first();
+    if (!(await btn.count())) break;
+    const label = ((await btn.innerText().catch(() => '')) || '').trim().slice(0, 40);
+    log(`\n- Mengklik tombol login "${label}"`);
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+      btn.click({ timeout: 10000 }).catch(() => {})
+    ]);
+    await page.waitForTimeout(3000);
+    await describePage(page, `Halaman login (langkah ${hop + 1})`);
+    log('\n**Kolom formulir:**');
+    for (const f of await describeForm(page)) log(`- \`${JSON.stringify(f)}\``);
+  }
+
   const pass = await page.$('input[type="password"]');
   if (!pass) {
     log('\n⚠️ Kolom kata sandi tidak ditemukan. Login mungkin lewat tombol/halaman lain (lihat daftar tombol di atas).');
