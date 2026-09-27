@@ -1,14 +1,14 @@
 {
-  "diperbarui": "2026-09-27T15:22:57.281Z",
+  "diperbarui": "2026-09-27T15:23:29.016Z",
   "minggu": 1,
-  "mingguIni": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas-benteng.web.app, dan menginstall perangkat lunak pendukung. Ia mengembangkan dan memperbaiki fitur dashboard, manajemen kegiatan, serta analisis sentimen pada website, termasuk pemindahan proses inferensi ke browser dan perbaikan bug. Selain itu, Rian ikut sosialisasi SSO, VPN, email baru, menangani anomali data, memasang banner Hari Statistik Nasional, dan berpartisipasi dalam lomba HSN serta persiapan apel.",
+  "mingguIni": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu itu ia mengembangkan website lintas‑benteng, menambahkan dashboard, visualisasi, serta memperbaiki fitur manajemen kegiatan dan analisis sentimen. Ia juga berpartisipasi dalam sosialisasi SSO, memasang banner Hari Statistik Nasional, dan membantu persiapan lomba.",
   "sorotan": [
-    "Pengembangan dashboard interaktif",
+    "Penambahan dashboard visualisasi data",
     "Pemindahan inferensi ke browser",
-    "Partisipasi lomba HSN"
+    "Banner Hari Statistik Nasional"
   ],
-  "keseluruhan": "Rian menunjukkan kemampuan cepat beradaptasi dengan lingkungan BPS dan menguasai teknologi yang diperlukan. Selama minggu pertama, ia berhasil menyelesaikan beberapa modul penting pada website dan aktif berkontribusi dalam kegiatan kantor.",
+  "keseluruhan": "Sejak memulai magang di BPS Kabupaten Bengkulu Tengah, Rian telah aktif menguasai alur kerja sistem dan berkontribusi pada pengembangan aplikasi monitoring kegiatan. Ia menunjukkan kemampuan teknis dan kolaboratif dalam mendukung berbagai kegiatan statistik dan acara kantor.",
   "mingguan": {
-    "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas-benteng.web.app, dan menginstall perangkat lunak pendukung. Ia mengembangkan dan memperbaiki fitur dashboard, manajemen kegiatan, serta analisis sentimen pada website, termasuk pemindahan proses inferensi ke browser dan perbaikan bug. Selain itu, Rian ikut sosialisasi SSO, VPN, email baru, menangani anomali data, memasang banner Hari Statistik Nasional, dan berpartisipasi dalam lomba HSN serta persiapan apel."
+    "1": "Rian mengikuti perkenalan batch MagangHub, mempelajari sistem, dan menginstall VPN. Selama minggu itu ia mengembangkan website lintas‑benteng, menambahkan dashboard, visualisasi, serta memperbaiki fitur manajemen kegiatan dan analisis sentimen. Ia juga berpartisipasi dalam sosialisasi SSO, memasang banner Hari Statistik Nasional, dan membantu persiapan lomba."
   }
 }
