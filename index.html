@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=28"></script>
+  <script src="assets/theme.js?v=29"></script>
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Laporan Kegiatan Magang</title>
   <meta name="description" content="Dokumentasi kegiatan harian peserta magang.">
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=28">
+  <link rel="stylesheet" href="assets/style.css?v=29">
 </head>
 <body>
   <nav class="navbar" id="top">
@@ -194,9 +194,11 @@
         <div class="footer-grid" id="footerGrid"></div>
         <div class="footer-bar">
           <div class="footer-clock" title="Waktu dari server, bukan dari jam perangkat">
-            <span class="live-dot" aria-hidden="true"></span>
-            <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
-            <span><strong class="sc-time" id="footerTime">--.--.--</strong> <small id="footerDate">Waktu server</small></span>
+            <span class="clock-icon" aria-hidden="true">
+              <svg class="ic"><use href="#i-clock"/></svg>
+              <span class="live-dot"></span>
+            </span>
+            <span class="clock-text"><span class="clock-line"><strong class="sc-time" id="footerTime">--.--.--</strong><span class="clock-src" id="footerSrc">waktu server</span></span><small id="footerDate"></small></span>
           </div>
           <a class="btn btn-sm footer-admin" href="admin.html" id="adminLink" hidden>
             <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Panel admin
@@ -231,7 +233,7 @@
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Berikutnya">›</button>
   </div>
 
-  <script src="assets/common.js?v=28"></script>
-  <script src="assets/app.js?v=28"></script>
+  <script src="assets/common.js?v=29"></script>
+  <script src="assets/app.js?v=29"></script>
 </body>
 </html>
