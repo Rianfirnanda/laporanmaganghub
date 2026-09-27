@@ -32,7 +32,7 @@ async function init() {
   const ikon = safePath(CONFIG.ikonSitus);
   if (ikon) $('favicon').href = ikon;
 
-  const weeks = [...new Set(allDates().map(d => mingguKe(CONFIG, d)))].sort((a, b) => b - a);
+  const weeks = [...new Set(allDates().filter(isHariKerja).map(d => mingguKe(CONFIG, d)))].sort((a, b) => b - a);
   const asked = Number(params.get('minggu'));
   WEEK = weeks.includes(asked) ? asked : (weeks[0] || mingguKe(CONFIG, todayStr()));
   $('week').innerHTML = (weeks.length ? weeks : [WEEK]).map(w => {
@@ -58,8 +58,9 @@ function allDates() {
     ...Object.keys(HARIAN).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && HARIAN[d] && statusOf(d) !== 'Hadir')])];
 }
 
+// Laporan mingguan hanya memuat hari kerja (Senin–Jumat).
 function weekDays(w) {
-  return allDates().filter(d => mingguKe(CONFIG, d) === w).sort().map(d => ({
+  return allDates().filter(d => mingguKe(CONFIG, d) === w && isHariKerja(d)).sort().map(d => ({
     date: d,
     status: statusOf(d),
     rep: HARIAN[d] || {},
@@ -140,7 +141,7 @@ function renderDokumen(days, range) {
     const r = d.rep;
     const photos = photosOf(d.items, 4);
     return `<section class="doc-day">
-      <h3>${esc(formatTanggal(d.date))} <small>Hari ke-${hariKe(CONFIG, d.date)}</small>
+      <h3>${esc(formatTanggal(d.date))} <small>Hari kerja ke-${hariKe(CONFIG, d.date)}</small>
         ${d.status !== 'Hadir' ? `<span class="tag tag-${d.status.toLowerCase()}">${d.status}</span>` : ''}</h3>
       ${d.items.length ? `<table class="doc-table">
         <thead><tr><th class="c-jam">Jam</th><th>Kegiatan</th><th>Keterangan</th></tr></thead>

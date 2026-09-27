@@ -41,18 +41,58 @@ function formatPendek(date) {
   return `${date.getDate()} ${BULAN_PENDEK[date.getMonth()]}`;
 }
 
+// ---------- Hari kerja (Senin–Jumat) ----------
+// Magang dihitung per hari kerja: Sabtu/Minggu tidak masuk hitungan hari,
+// minggu, statistik, maupun laporan mingguan.
+function isHariKerja(dateStr) {
+  const d = parseDate(dateStr).getDay();
+  return d >= 1 && d <= 5;
+}
+
+// Senin pada minggu kalender tanggal itu.
+function seninDari(dateStr) {
+  const d = parseDate(dateStr);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+// Jumlah hari Senin–Jumat dari a sampai b (inklusif).
+function hitungHariKerja(a, b) {
+  if (b < a) return 0;
+  const days = daysBetween(a, b) + 1;
+  const full = Math.floor(days / 7);
+  let n = full * 5;
+  const start = parseDate(a).getDay();
+  for (let i = 0; i < days % 7; i++) {
+    const wd = (start + full * 7 + i) % 7;
+    if (wd >= 1 && wd <= 5) n++;
+  }
+  return n;
+}
+
+// Hari kerja ke-berapa (akhir pekan ikut nomor hari Jumat sebelumnya).
 function hariKe(config, dateStr) {
-  return daysBetween(config.tanggalMulai, dateStr) + 1;
+  return hitungHariKerja(config.tanggalMulai, dateStr);
 }
 
+function totalHariKerja(config) {
+  return hitungHariKerja(config.tanggalMulai, config.tanggalSelesai);
+}
+
+// Minggu kalender (Senin–Jumat) sejak minggu tanggal mulai.
 function mingguKe(config, dateStr) {
-  return Math.floor(daysBetween(config.tanggalMulai, dateStr) / 7) + 1;
+  return Math.round((seninDari(dateStr) - seninDari(config.tanggalMulai)) / (7 * DAY_MS)) + 1;
 }
 
+// Senin sampai Jumat minggu itu, dibatasi tanggal mulai/selesai magang.
 function rentangMinggu(config, minggu) {
-  const start = new Date(parseDate(config.tanggalMulai).getTime() + (minggu - 1) * 7 * DAY_MS);
-  const end = new Date(start.getTime() + 6 * DAY_MS);
-  return { start, end };
+  const start = seninDari(config.tanggalMulai);
+  start.setDate(start.getDate() + (minggu - 1) * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 4);
+  const mulai = parseDate(config.tanggalMulai);
+  const selesai = config.tanggalSelesai ? parseDate(config.tanggalSelesai) : null;
+  return { start: start < mulai ? mulai : start, end: selesai && end > selesai ? selesai : end };
 }
 
 function sesiDariJam(jam) {
