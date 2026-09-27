@@ -67,19 +67,25 @@ function renderProfile() {
   $('posisi').hidden = !CONFIG.posisi;
   $('instansi').textContent = CONFIG.instansi || '';
 
-  // Hanya hari kerja (Senin–Jumat) yang dihitung.
-  const total = totalHariKerja(CONFIG);
+  // Progres program sama dengan dasbor MagangHub (hari kalender), ditambah
+  // hitungan hari kerja (Senin–Jumat) yang dipakai untuk rekap dan laporan.
   const today = wibParts(new Date()).tanggal;
-  const now = Math.min(Math.max(hariKe(CONFIG, today), 0), total);
+  const total = daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1;
+  const now = Math.min(Math.max(daysBetween(CONFIG.tanggalMulai, today) + 1, 0), total);
+  const totalKerja = totalHariKerja(CONFIG);
+  const nowKerja = Math.min(Math.max(hariKe(CONFIG, today), 0), totalKerja);
   const pct = Math.round((now / total) * 100);
   const circ = 2 * Math.PI * 27;
   $('ringFg').style.strokeDasharray = circ;
   $('ringFg').style.strokeDashoffset = circ * (1 - pct / 100);
   $('ringText').textContent = `${pct}%`;
-  $('progressLabel').textContent = now > 0 ? `Hari kerja ke-${now} dari ${total}` : 'Belum dimulai';
+  $('progressLabel').textContent = now > 0 ? `Hari ke-${now} dari ${total}` : 'Belum dimulai';
   $('progressSub').textContent = now >= total
     ? 'Program magang selesai'
-    : now > 0 ? `Sisa ${total - now} hari kerja · Minggu ke-${mingguKe(CONFIG, today)}` : `Mulai ${formatTanggal(CONFIG.tanggalMulai, false)}`;
+    : now > 0 ? `Sisa ${total - now} hari · Minggu ke-${mingguKe(CONFIG, today)}` : `Mulai ${formatTanggal(CONFIG.tanggalMulai, false)}`;
+  $('progressWork').textContent = now > 0
+    ? `Hari kerja ke-${nowKerja} dari ${totalKerja} · sisa ${totalKerja - nowKerja} hari kerja`
+    : `${totalKerja} hari kerja (Senin–Jumat)`;
   $('progress').hidden = false;
 }
 
@@ -122,7 +128,8 @@ function renderSidebar() {
   $('periode').innerHTML = [
     ['Mulai', formatTanggal(CONFIG.tanggalMulai, false)],
     ['Selesai', formatTanggal(CONFIG.tanggalSelesai, false)],
-    ['Durasi', `${total} hari kerja · ${mingguKe(CONFIG, CONFIG.tanggalSelesai)} minggu`],
+    ['Durasi', `${daysBetween(CONFIG.tanggalMulai, CONFIG.tanggalSelesai) + 1} hari · ${total} hari kerja`],
+    ['Jumlah minggu', `${mingguKe(CONFIG, CONFIG.tanggalSelesai)} minggu`],
     ['Hari kerja', 'Senin – Jumat']
   ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
 
