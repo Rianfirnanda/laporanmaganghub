@@ -139,6 +139,69 @@ function applyTheme(color) {
   document.documentElement.style.setProperty('--accent', safeColor(color));
 }
 
+// ---------- Pembaruan otomatis ----------
+// GitHub Pages menyuruh browser menyimpan halaman ±10 menit, sehingga setelah
+// website diperbarui HP bisa masih memakai versi lama. Setiap halaman membaca
+// version.json (tanpa cache); bila berbeda dengan versi yang sedang berjalan,
+// halaman dimuat ulang dengan alamat baru agar pasti mengambil versi terbaru.
+const APP_VERSION = (() => {
+  try { return new URL(document.currentScript.src).searchParams.get('v') || ''; } catch { return ''; }
+})();
+
+async function cekVersiBaru() {
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return '';
+    const v = String((await res.json()).v || '');
+    return v && APP_VERSION && v !== APP_VERSION ? v : '';
+  } catch { return ''; }
+}
+
+function muatVersiBaru(v) {
+  const key = `laporanmagang.versi.${v}`;
+  try {
+    if (sessionStorage.getItem(key)) return false;   // cegah muat ulang berulang
+    sessionStorage.setItem(key, '1');
+  } catch { /* tanpa sessionStorage: tetap coba sekali */ }
+  const url = new URL(location.href);
+  url.searchParams.set('versi', v);
+  location.replace(url.href);
+  return true;
+}
+
+function bannerVersiBaru(v) {
+  if (document.getElementById('updateBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'updateBar';
+  bar.className = 'update-bar';
+  bar.innerHTML = '<span>Versi baru website tersedia.</span><button type="button" class="btn btn-primary btn-sm">Perbarui</button>';
+  bar.querySelector('button').addEventListener('click', () => {
+    try { sessionStorage.removeItem(`laporanmagang.versi.${v}`); } catch { /* abaikan */ }
+    muatVersiBaru(v);
+  });
+  document.body.appendChild(bar);
+}
+
+async function periksaPembaruan() {
+  const v = await cekVersiBaru();
+  if (!v) return;
+  // Panel admin bisa menahan pembaruan selama ada isian yang belum disimpan.
+  const tahan = typeof window.adaIsianBelumDisimpan === 'function' && window.adaIsianBelumDisimpan();
+  if (tahan || !muatVersiBaru(v)) bannerVersiBaru(v);
+}
+
+(function mulaiPembaruanOtomatis() {
+  // Hapus penanda ?versi= dari alamat setelah halaman baru termuat.
+  const url = new URL(location.href);
+  if (url.searchParams.has('versi')) {
+    url.searchParams.delete('versi');
+    history.replaceState(history.state, '', url.href);
+  }
+  periksaPembaruan();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) periksaPembaruan(); });
+  setInterval(periksaPembaruan, 5 * 60 * 1000);
+})();
+
 // ---------- Waktu server (WIB) ----------
 // Jam HP/laptop bisa salah atau diubah, jadi waktu diambil dari header "Date"
 // server GitHub Pages lalu dipakai sebagai selisih terhadap jam perangkat.
