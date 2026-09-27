@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com; style-src 'self' https://fonts.googleapis.com https://accounts.google.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src https://accounts.google.com; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <script src="assets/theme.js?v=21"></script>
+  <script src="assets/theme.js?v=22"></script>
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#163ba2">
@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Setiap CSS/JS diubah, jalankan scripts/naikkan-versi.sh (menaikkan ?v= dan version.json) agar pengunjung otomatis dapat versi terbaru. -->
-  <link rel="stylesheet" href="assets/style.css?v=21">
+  <link rel="stylesheet" href="assets/style.css?v=22">
 </head>
 <body class="admin">
   <nav class="navbar">
@@ -499,6 +499,33 @@
           </div>
 
           <div class="stack">
+            <section class="card" id="storageCard">
+              <div class="card-header">
+                <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-cloud"/></svg></span>
+                <div class="head-text"><h3>Penyimpanan</h3><span id="storageUpdated">Belum diperiksa</span></div>
+                <button class="icon-btn" type="button" id="btnStorage" title="Periksa ulang" aria-label="Periksa ulang penyimpanan"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg></button>
+              </div>
+              <div class="card-body storage">
+                <div class="meter-block">
+                  <div class="meter-head"><strong>Website (GitHub Pages)</strong><span id="stSiteText">–</span></div>
+                  <div class="meter" role="progressbar" aria-label="Ukuran website" aria-valuemin="0" aria-valuemax="100" id="stSiteBar"><span></span></div>
+                  <small id="stSiteDetail">Batas GitHub Pages: 1 GB per website.</small>
+                </div>
+                <div class="meter-block">
+                  <div class="meter-head"><strong>Repository GitHub</strong><span id="stRepoText">–</span></div>
+                  <div class="meter" role="progressbar" aria-label="Ukuran repository" aria-valuemin="0" aria-valuemax="100" id="stRepoBar"><span></span></div>
+                  <small>Termasuk riwayat semua perubahan (foto yang dihapus tetap tersimpan). Disarankan di bawah 1 GB; angka diperbarui GitHub secara berkala.</small>
+                </div>
+                <p class="storage-forecast" id="stForecast" hidden></p>
+                <div class="meter-block" id="stDriveBlock">
+                  <div class="meter-head"><strong>Google Drive</strong><span id="stDriveText">–</span></div>
+                  <div class="meter" role="progressbar" aria-label="Kuota Google Drive" aria-valuemin="0" aria-valuemax="100" id="stDriveBar"><span></span></div>
+                  <small id="stDriveDetail">Hubungkan Google Drive untuk melihat kuota akun dan ukuran folder Laporan Magang.</small>
+                  <button class="btn btn-light btn-sm" type="button" id="btnStorageDrive"><svg class="ic" aria-hidden="true"><use href="#i-cloud"/></svg> Periksa Google Drive</button>
+                </div>
+              </div>
+            </section>
+
             <section class="card">
               <div class="card-header">
                 <span class="head-icon"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
@@ -593,8 +620,8 @@
 
   <div class="toast" id="toast" hidden></div>
 
-  <script src="assets/common.js?v=21"></script>
-  <script src="assets/ai.js?v=21"></script>
-  <script src="assets/admin.js?v=21"></script>
+  <script src="assets/common.js?v=22"></script>
+  <script src="assets/ai.js?v=22"></script>
+  <script src="assets/admin.js?v=22"></script>
 </body>
 </html>

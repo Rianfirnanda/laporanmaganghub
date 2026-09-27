@@ -443,6 +443,7 @@ function openTab(name) {
     if (!gps && !gpsPromise) autoLocate();
     catchUpAi();
   }
+  if (name === 'keamanan') loadStorage();
 }
 
 $('tabbar').addEventListener('click', ev => {
@@ -1908,6 +1909,113 @@ async function copyToDrive(files, entry, msgId = 'saveMsg', nums = null) {
   if (!ids.some(Boolean) && lastErr) throw lastErr;
   return { ids, error: lastErr };
 }
+
+// ---------- Indikator penyimpanan (GitHub & Google Drive) ----------
+const GB = 1024 ** 3;
+let storageAt = 0;
+
+function formatBytes(n) {
+  if (!Number.isFinite(n)) return '–';
+  if (n >= GB) return `${(n / GB).toFixed(2).replace('.', ',')} GB`;
+  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1).replace('.', ',')} MB`;
+  return `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+
+function setMeter(id, used, limit) {
+  const pct = limit ? Math.min(100, (used / limit) * 100) : 0;
+  const bar = $(id);
+  bar.querySelector('span').style.width = `${Math.max(pct, used ? 0.6 : 0)}%`;
+  bar.classList.toggle('warn', pct >= 70 && pct < 90);
+  bar.classList.toggle('danger', pct >= 90);
+  bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+  return pct;
+}
+
+function pctText(used, limit) {
+  const p = (used / limit) * 100;
+  return p < 0.1 ? '<0,1%' : `${p.toFixed(p < 10 ? 1 : 0).replace('.', ',')}%`;
+}
+
+// Website = semua file di branch saat ini (dari git tree); repository = angka GitHub
+// (termasuk riwayat). Perkiraan akhir magang dari rata-rata per hari kerja.
+async function loadStorage(force = false) {
+  if (!TOKEN || (!force && Date.now() - storageAt < 5 * 60 * 1000)) return;
+  storageAt = Date.now();
+  $('storageUpdated').textContent = 'Memeriksa…';
+  try {
+    const [tree, repo] = await Promise.all([gh(`/git/trees/${encodeURIComponent(S.branch)}?recursive=1`), gh('')]);
+    const blobs = (tree.tree || []).filter(t => t.type === 'blob');
+    const sum = list => list.reduce((n, t) => n + (t.size || 0), 0);
+    const isThumb = t => /^uploads\/.*-t\.jpg$/.test(t.path);
+    const photos = blobs.filter(t => /^uploads\/\d{4}\//.test(t.path) && !isThumb(t));
+    const site = sum(blobs);
+    const fotoBytes = sum(photos), kecilBytes = sum(blobs.filter(isThumb));
+    setMeter('stSiteBar', site, GB);
+    $('stSiteText').textContent = `${formatBytes(site)} dari 1 GB · ${pctText(site, GB)}`;
+    $('stSiteDetail').textContent = `${photos.length} foto (${formatBytes(fotoBytes)}) · foto kecil ${formatBytes(kecilBytes)} · halaman & data ${formatBytes(site - fotoBytes - kecilBytes)}${tree.truncated ? ' · daftar file terpotong, angka perkiraan' : ''}`;
+    const repoBytes = (repo.size || 0) * 1024;
+    setMeter('stRepoBar', repoBytes, GB);
+    $('stRepoText').textContent = `${formatBytes(repoBytes)} dari 1 GB · ${pctText(repoBytes, GB)}`;
+
+    // Perkiraan: rata-rata ukuran foto per hari kerja yang sudah lewat.
+    const c = CFG || {};
+    const today = wibParts().tanggal;
+    if (c.tanggalMulai && c.tanggalSelesai && today >= c.tanggalMulai) {
+      const lewat = Math.max(1, hitungHariKerja(c.tanggalMulai, today < c.tanggalSelesai ? today : c.tanggalSelesai));
+      const sisa = today < c.tanggalSelesai ? hitungHariKerja(today, c.tanggalSelesai) - (isHariKerja(today) ? 1 : 0) : 0;
+      const perHari = (fotoBytes + kecilBytes) / lewat;
+      const akhir = site + perHari * Math.max(0, sisa);
+      $('stForecast').hidden = false;
+      $('stForecast').textContent = `Rata-rata ${formatBytes(perHari)} foto per hari kerja. Dengan kecepatan ini, website diperkirakan ±${formatBytes(akhir)} di akhir magang (${pctText(akhir, GB)} dari 1 GB)${akhir > 0.8 * GB ? ' — mendekati batas, pertimbangkan mengurangi jumlah foto per kegiatan.' : ' — aman.'}`;
+    }
+    $('storageUpdated').textContent = `Diperiksa ${formatWaktuWib(serverNow(), false)}`;
+  } catch (e) {
+    storageAt = 0;
+    $('storageUpdated').textContent = `Gagal memeriksa: ${e.message}`;
+  }
+  if (!driveCfg.clientId) {
+    $('stDriveText').textContent = 'Belum diatur';
+    $('stDriveDetail').textContent = 'Atur Google Drive di kartu "Salinan ke Google Drive" untuk melihat kuotanya.';
+    $('btnStorageDrive').hidden = true;
+  } else if (driveToken && Date.now() < driveTokenExp - 60000) {
+    loadDriveStorage().catch(() => {});
+  } else {
+    $('btnStorageDrive').hidden = false;
+  }
+}
+
+// Kuota akun Google (Drive + Gmail + Foto) dan ukuran file yang dibuat panel ini.
+async function loadDriveStorage() {
+  const about = await gdrive('https://www.googleapis.com/drive/v3/about?fields=storageQuota');
+  const q = about.storageQuota || {};
+  const used = Number(q.usage || 0), limit = Number(q.limit || 0);
+  let folderBytes = 0, count = 0, page = '';
+  do {
+    const r = await gdrive(`${DRIVE_API}?q=${encodeURIComponent("trashed = false and mimeType != 'application/vnd.google-apps.folder'")}&fields=nextPageToken,files(size)&pageSize=1000&spaces=drive${page ? `&pageToken=${encodeURIComponent(page)}` : ''}`);
+    (r.files || []).forEach(f => { folderBytes += Number(f.size || 0); count++; });
+    page = r.nextPageToken || '';
+  } while (page);
+  if (limit) {
+    setMeter('stDriveBar', used, limit);
+    $('stDriveText').textContent = `${formatBytes(used)} dari ${formatBytes(limit)} · ${pctText(used, limit)}`;
+  } else {
+    setMeter('stDriveBar', 0, 1);
+    $('stDriveText').textContent = `${formatBytes(used)} · tanpa batas`;
+  }
+  $('stDriveDetail').textContent = `Folder Laporan Magang: ${count} foto, ${formatBytes(folderBytes)}. Kuota akun dipakai bersama Gmail dan Google Foto.`;
+  $('btnStorageDrive').hidden = true;
+}
+
+$('btnStorage').addEventListener('click', () => loadStorage(true));
+$('btnStorageDrive').addEventListener('click', ev => {
+  if (!driveCfg.clientId) return toast('Atur Google Drive terlebih dahulu (kartu Google Drive di bawah).', true);
+  const tokenPromise = ensureDriveToken();   // sinkron di dalam klik agar pop-up tidak diblokir
+  tokenPromise.catch(() => {});
+  withBusy(ev.currentTarget, async () => {
+    await tokenPromise;
+    await loadDriveStorage();
+  });
+});
 
 // ---------- Foto kecil (thumbnail) untuk foto lama ----------
 function photosWithoutThumb() {
