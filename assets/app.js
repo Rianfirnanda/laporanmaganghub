@@ -235,10 +235,18 @@ function renderFooter() {
   $('footerGrid').innerHTML = html;
   const ikon = safePath(CONFIG.ikonSitus);
   if (ikon) setBrandImage($('footerGrid').querySelector('.brand-mark'), ikon);
-  $('portoLink').hidden = !porto;
-  if (porto) {
-    $('portoLink').href = porto;
-    $('portoLink').textContent = `Dibuat oleh ${CONFIG.nama} · ${porto.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗`;
+  // Baris kredit: diatur di panel (Profil → Footer). Konfigurasi lama tanpa
+  // "kredit" tetap memakai tautan portofolio seperti sebelumnya.
+  const k = f.kredit && typeof f.kredit === 'object' ? f.kredit : {};
+  const kUrl = safeUrl(k.url !== undefined ? k.url : porto);
+  const kTeks = String(k.teks || `Dibuat oleh ${CONFIG.nama}`);
+  const kTampil = k.tampil !== undefined ? k.tampil !== false : Boolean(kUrl);
+  const credit = $('portoLink');
+  credit.hidden = !kTampil;
+  if (kTampil) {
+    const host = kUrl.replace(/^(https?:\/\/|mailto:|tel:)/i, '').replace(/\/$/, '');
+    credit.textContent = kUrl ? `${kTeks} · ${host} ↗` : kTeks;
+    if (kUrl) credit.href = kUrl; else credit.removeAttribute('href');
   }
   $('footerText').textContent = f.teks || [`© ${new Date().getFullYear()} ${CONFIG.nama}`, CONFIG.instansi].filter(Boolean).join(' · ');
   $('adminLink').hidden = !CONFIG.tampilkanLinkAdmin;

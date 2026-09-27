@@ -1167,6 +1167,11 @@ function fillConfigForm() {
   $('cWarnaText').textContent = $('cWarna').value;
   $('cAdminLink').checked = Boolean(c.tampilkanLinkAdmin);
   $('cFooterTeks').value = f.teks || '';
+  const k = f.kredit || {};
+  $('cKreditTampil').checked = k.tampil !== undefined ? k.tampil !== false : Boolean(c.portofolio);
+  $('cKreditTeks').value = k.teks || '';
+  $('cKreditUrl').value = k.url !== undefined ? k.url : (c.portofolio || '');
+  renderKreditPreview();
   $('cJudulTautan').value = f.judulTautan || '';
   $('cSections').replaceChildren();
   (f.bagian || []).forEach(b => addRow('cSections', 'tplSection', { '.r-judul': b.judul, '.r-isi': b.isi }));
@@ -1271,6 +1276,38 @@ $('cNama').addEventListener('input', () => renderImageSlot('fotoProfil'));
 $('cInstansi').addEventListener('input', () => renderImageSlot('logoInstansi'));
 $('btnResetConfig').addEventListener('click', fillConfigForm);
 
+// Baris kredit di bagian paling bawah website ("Dibuat oleh … · tautan ↗").
+function normalUrl(url) {
+  const u = String(url || '').trim();
+  return u && !/^(https?:\/\/|mailto:)/i.test(u) ? `https://${u}` : u;
+}
+
+// Alamat web (https/http dengan nama domain) atau email yang benar-benar bisa dibuka.
+function alamatValid(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'mailto:') return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(u.pathname);
+    return /^https?:$/.test(u.protocol) && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(u.hostname);
+  } catch { return false; }
+}
+
+function readKredit() {
+  const url = normalUrl($('cKreditUrl').value);
+  if (url && !alamatValid(url)) throw new Error('Tautan kredit tidak valid. Gunakan alamat https://…');
+  return { tampil: $('cKreditTampil').checked, teks: $('cKreditTeks').value.trim(), url };
+}
+
+function renderKreditPreview() {
+  const on = $('cKreditTampil').checked;
+  $('kreditFields').hidden = !on;
+  const teks = $('cKreditTeks').value.trim() || `Dibuat oleh ${$('cNama').value.trim() || 'Nama Anda'}`;
+  const url = normalUrl($('cKreditUrl').value);
+  const host = url.replace(/^(https?:\/\/|mailto:)/i, '').replace(/\/$/, '');
+  $('kreditPreview').textContent = on ? `Pratinjau: ${teks}${host ? ` · ${host} ↗` : ''}` : 'Baris kredit disembunyikan.';
+}
+['cKreditTampil', 'cKreditTeks', 'cKreditUrl', 'cNama'].forEach(id => $(id).addEventListener('input', renderKreditPreview));
+$('cKreditTampil').addEventListener('change', renderKreditPreview);
+
 function readConfigForm() {
   const bagian = [...$('cSections').querySelectorAll('.repeat-row')]
     .map(r => ({ judul: r.querySelector('.r-judul').value.trim(), isi: r.querySelector('.r-isi').value.trim() }))
@@ -1303,6 +1340,7 @@ function readConfigForm() {
     hariLibur: readLiburForm(),
     footer: {
       teks: $('cFooterTeks').value.trim(),
+      kredit: readKredit(),
       judulTautan: $('cJudulTautan').value.trim(),
       bagian,
       tautan
