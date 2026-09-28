@@ -27,6 +27,30 @@
     }
   },
   {
+    "id": "20260928-muklr3g9",
+    "tanggal": "2026-09-28",
+    "jam": "09:02",
+    "sesi": "Pagi",
+    "judul": "Entri data",
+    "lokasi": "BPS kab. Bengkulu tengah",
+    "keterangan": "Memperbaiki data anomali",
+    "foto": [
+      "uploads/2026/09/28/20260928-muklr3g9-muklr3ga0.jpg"
+    ],
+    "koordinat": {
+      "lat": -3.771397,
+      "lng": 102.389631,
+      "akurasi": 11
+    },
+    "dicatat": "2026-09-28T02:02:24.142Z",
+    "fotoKecil": {
+      "uploads/2026/09/28/20260928-muklr3g9-muklr3ga0.jpg": "uploads/2026/09/28/20260928-muklr3g9-muklr3ga0-t.jpg"
+    },
+    "fotoDrive": {
+      "uploads/2026/09/28/20260928-muklr3g9-muklr3ga0.jpg": "1R03j88BKSEsGyf8EvGo7S6dLEm5zrIyo"
+    }
+  },
+  {
     "id": "20260927-mujo9si5",
     "tanggal": "2026-09-25",
     "jam": "10:24",
