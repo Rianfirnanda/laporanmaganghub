@@ -1,5 +1,40 @@
 [
   {
+    "id": "20260929-mumg39n7",
+    "tanggal": "2026-09-29",
+    "jam": "13:59",
+    "sesi": "Siang",
+    "judul": "Revisit ke desa taba pasemah untuk memperbaiki kualitas data Sensus Ekonomi 2026",
+    "lokasi": "Desa Taba Pasemah, Bengkulu Tengah",
+    "keterangan": "Revisit ke desa taba pasemah untuk memperbaiki kualitas data Sensus Ekonomi 2026",
+    "foto": [
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n80.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n81.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n82.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n83.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n84.jpg"
+    ],
+    "koordinat": {
+      "lat": -3.771388,
+      "lng": 102.389616,
+      "akurasi": 98
+    },
+    "dicatat": "2026-09-29T08:59:34.109Z",
+    "fotoKecil": {
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n80.jpg": "uploads/2026/09/29/20260929-mumg39n7-mumg39n80-t.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n81.jpg": "uploads/2026/09/29/20260929-mumg39n7-mumg39n81-t.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n82.jpg": "uploads/2026/09/29/20260929-mumg39n7-mumg39n82-t.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n83.jpg": "uploads/2026/09/29/20260929-mumg39n7-mumg39n83-t.jpg",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n84.jpg": "uploads/2026/09/29/20260929-mumg39n7-mumg39n84-t.jpg"
+    },
+    "fotoDrive": {
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n80.jpg": "1fLSLsnjhzXYXclG-oErOzs5o0OZ3Isj0",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n81.jpg": "134xqU9qDAKF0ptx7jSvYhA1XwoOR5qwS",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n82.jpg": "12kf9s4D94CfoOgWA1JTGJhZAp7JsUj17",
+      "uploads/2026/09/29/20260929-mumg39n7-mumg39n83.jpg": "1xHxOK51Yc_x6eBl1b9GxrOodfmGtDclX"
+    }
+  },
+  {
     "id": "20260928-mukjs5jm",
     "tanggal": "2026-09-28",
     "jam": "08:07",
