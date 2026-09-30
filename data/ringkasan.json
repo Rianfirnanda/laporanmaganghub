@@ -1,15 +1,15 @@
 {
-  "diperbarui": "2026-09-29T09:01:52.802Z",
+  "diperbarui": "2026-09-30T05:23:33.925Z",
   "minggu": 2,
-  "mingguIni": "Pada minggu kedua, Rian memperbaiki data anomali Sensus Ekonomi 2026 untuk kecamatan Merigi Sakti dan melakukan entri data secara konsisten melalui portal lintas‑benteng. Ia juga melakukan kunjungan kembali ke desa Taba Pasemah untuk meningkatkan kualitas data lapangan.",
+  "mingguIni": "Pada minggu kedua, Rian memperbaiki data anomali Sensus Ekonomi 2026 di kecamatan Merigi Sakti dan melakukan kunjungan kembali ke Desa Taba Pasemah serta Kecamatan Talang Empat untuk meningkatkan kualitas data.",
   "sorotan": [
     "Perbaikan data anomali",
-    "Entri data konsisten",
-    "Kunjungan lapangan desa"
+    "Revisit lapangan Taba Pasemah",
+    "Pendataan di Talang Empat"
   ],
-  "keseluruhan": "Rian telah melewati fase orientasi dan pengembangan website pada minggu pertama, kemudian beralih ke tugas-tugas operasional yang penting bagi kualitas statistik. Sepanjang dua minggu ini, ia menunjukkan kemampuan adaptasi dan kontribusi nyata terhadap program BPS.",
+  "keseluruhan": "Sepanjang dua minggu magang, Rian terlibat dalam perkenalan tim, pengembangan website, serta persiapan acara HSN, kemudian fokus pada perbaikan dan validasi data Sensus Ekonomi. Pengalaman ini memperkuat pemahamannya tentang proses statistik di BPS.",
   "mingguan": {
     "1": "Pada minggu pertama, Rian mengikuti perkenalan batch MagangHub, mempelajari alur kerja website lintas‑benteng, dan menginstal VPN. Ia kemudian mengembangkan fitur dashboard, visualisasi data, serta memperbaiki manajemen kegiatan dan bug pada sistem. Selain itu, Rian ikut sosialisasi SSO, menyiapkan atribut lomba Hari Statistik Nasional, dan membantu operasional acara.",
-    "2": "Pada minggu kedua, Rian memperbaiki data anomali Sensus Ekonomi 2026 untuk kecamatan Merigi Sakti dan melakukan entri data secara konsisten melalui portal lintas‑benteng. Ia juga melakukan kunjungan kembali ke desa Taba Pasemah untuk meningkatkan kualitas data lapangan."
+    "2": "Pada minggu kedua, Rian memperbaiki data anomali Sensus Ekonomi 2026 di kecamatan Merigi Sakti dan melakukan kunjungan kembali ke Desa Taba Pasemah serta Kecamatan Talang Empat untuk meningkatkan kualitas data."
   }
 }
