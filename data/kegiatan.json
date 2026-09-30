@@ -1,5 +1,33 @@
 [
   {
+    "id": "20260930-munnspcs",
+    "tanggal": "2026-09-30",
+    "jam": "12:22",
+    "sesi": "Siang",
+    "judul": "Revisit Pendataan Sensus Ekonomi 2026 di kecamatan talang empat",
+    "lokasi": "Talang Empat, Bengkulu Tengah",
+    "keterangan": "Revisit Pendataan Sensus Ekonomi 2026 di kecamatan talang empat, desa yang dikunjungi adalah kantor desa Taba Pasemah, Tengah Padang, dan desa nakau",
+    "kendala": "Tidak ada kendala",
+    "foto": [
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs0.jpg",
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs1.jpg"
+    ],
+    "koordinat": {
+      "lat": -3.771382,
+      "lng": 102.389626,
+      "akurasi": 11
+    },
+    "dicatat": "2026-09-30T05:22:55.945Z",
+    "fotoKecil": {
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs0.jpg": "uploads/2026/09/30/20260930-munnspcs-munnspcs0-t.jpg",
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs1.jpg": "uploads/2026/09/30/20260930-munnspcs-munnspcs1-t.jpg"
+    },
+    "fotoDrive": {
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs0.jpg": "1hueHGM0FEaiWmAgmM7JCzSOK6JYbJyTi",
+      "uploads/2026/09/30/20260930-munnspcs-munnspcs1.jpg": "13ac5sNhQQxYixyoUCg2EAldLOvNWHZn5"
+    }
+  },
+  {
     "id": "20260929-mumg39n7",
     "tanggal": "2026-09-29",
     "jam": "13:59",
